@@ -61,7 +61,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal)}
 .empty{text-align:center;color:var(--mu);padding:36px 24px}
 .viewer{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;flex-direction:column}
 .viewer .vb{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;border-bottom:1px solid var(--bd);background:var(--s1)}
-.viewer .vc{flex:1;overflow:auto;background:#222;touch-action:pan-x pan-y pinch-zoom}
+.viewer .vc{flex:1;overflow:auto;background:#222;touch-action:pan-x pan-y}
 .viewer canvas{display:block;margin:0 auto 6px;background:#fff}
 .vt{max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vload{color:#ddd;padding:40px;text-align:center}
@@ -83,3 +83,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal)}
 .bar{position:relative;overflow:visible}
 .bar i{border-radius:5px}
 .mark{position:absolute;top:-4px;width:2px;height:13px;background:var(--tx);opacity:.75;border-radius:1px;margin-left:-1px}
+/* comportament d'app: sense zoom de pàgina ni selecció de text, camps a 16px perquè l'iPhone no faci zoom en escriure */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%}
+body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,select,textarea{font-size:16px;-webkit-user-select:text;user-select:text}
+.octl{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+.sm:disabled{opacity:.3}
+.sm.on{background:linear-gradient(135deg,var(--teal),var(--lime));color:#0B1A1D}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:14px;font-size:14px}
+.lbl{font-size:11px;letter-spacing:.08em;color:var(--mu);margin-bottom:2px}
+.tabs button{font-size:13px;padding:11px 2px}
+.sec .pill{border:0}

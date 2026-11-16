@@ -82,7 +82,7 @@ async function logout(){closeSheet();await sb.auth.signOut();user=null;projects=
 /* ---------- dades ---------- */
 async function refresh(){
   try{
-    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*)').order('created_at',{ascending:false}));
+    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*), scopes(*)').order('created_at',{ascending:false}));
     projects=data;saveCache();offline=false;render();
   }catch(e){offline=true;render();toast(navigator.onLine?'No s\'han pogut carregar les dades':'Sense connexió: es mostren les dades desades')}
 }
@@ -107,14 +107,16 @@ function home(){
     <div class="sub">${new Date().toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long'})}${offline?` · <span style="color:var(--red)">${ic('wifi')} sense connexió</span>`:''}</div>
     <div class="stats"><div class="stat"><b>${projects.length}</b><span>Obres</span></div><div class="stat"><b>${all.length}</b><span>Tasques pendents</span></div><div class="stat"><b style="color:var(--lime)">${urgent}</b><span>Urgents</span></div></div>
   </div>
-  <div class="sec"><h2>Les meves obres</h2></div>
-  ${projects.length?projects.map(p=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);return`
-  <button class="card" onclick="go({name:'project',id:'${p.id}'},'tasks')">
-    <div class="row"><span class="code">${esc(p.code)}</span><span style="display:flex;gap:6px">${s.late?'<span class="pill red">Endarrerida</span>':''}${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}${!s.late&&!u?`<span class="pill lime">${esc(p.status)}</span>`:''}</span></div>
+  <div class="sec"><h2>Les meves obres</h2>${projects.length>1?`<button class="pill" style="font-size:12px;padding:6px 14px" onclick="ordering=!ordering;render()">${ordering?'Fet':'Ordenar'}</button>`:''}</div>
+  ${projects.length?sortedProjects().map((p,i,arr)=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);return`
+  <${ordering?'div':'button'} class="card" ${ordering?'':`onclick="go({name:'project',id:'${p.id}'},'tasks')"`}>
+    <div class="row"><span class="code">${p.pinned?ic('pin')+' ':''}${esc(p.code)}</span><span style="display:flex;gap:6px">${s.late?'<span class="pill red">Endarrerida</span>':''}${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}${!s.late&&!u?`<span class="pill lime">${esc(p.status)}</span>`:''}</span></div>
     <div class="ttl">${esc(p.name)}</div><div class="mu">${esc(p.client)}</div>
     ${s.bud>0?`<div class="row" style="margin-top:14px;align-items:flex-end"><div><div class="mu" style="font-size:11px;letter-spacing:.08em">CERTIFICAT</div><div style="font-size:17px">${eur(s.cert)}</div></div><div style="text-align:right"><div class="mu" style="font-size:11px;letter-spacing:.08em">ADJUDICAT</div><div style="font-size:17px">${eur(s.bud)}</div></div></div>`:''}
     <div class="bar"><i style="width:${Math.min(100,s.exec||0)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
-    <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${s.exec!==null?Math.round(s.exec)+'% executat':'Sense pressupost'}</span></div></button>`}).join(''):`<div class="empty">Encara no tens cap obra.<br>Afegeix la primera amb el botó de sota.</div>`}
+    <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${s.exec!==null?Math.round(s.exec)+'% executat':'Sense pressupost'}</span></div>
+    ${ordering?`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',-1)" aria-label="Pujar">${ic('arrow-up')}</button><button class="sm" ${i===arr.length-1||!!arr[i+1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',1)" aria-label="Baixar">${ic('arrow-down')}</button><button class="sm ${p.pinned?'on':''}" onclick="togglePin('${p.id}')" aria-label="Fixar a dalt">${ic('pin')}</button></div>`:''}
+  </${ordering?'div':'button'}>`}).join(''):`<div class="empty">Encara no tens cap obra.<br>Afegeix la primera amb el botó de sota.</div>`}
   <button class="fab" onclick="newProject()">${ic('plus')} Nova obra</button>`;
 }
 
@@ -136,6 +138,10 @@ function project(){
       ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}
       <button class="sm" onclick="delPlan('${p.id}','${x.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
+  }else if(tab==='scopes'){
+    const sc=[...(p.scopes||[])].sort((a,b)=>(a.planned_start||'9999')<(b.planned_start||'9999')?-1:1);
+    body=(sc.length?sc.map(x=>scopeCard(p,x)).join(''):`<div class="empty">Cap àmbit encara.<br>Afegeix zones de l'obra, com "Pou nord", per seguir-ne les dates.</div>`)
+      +`<button class="fab" onclick="newScope('${p.id}')">${ic('plus')} Nou àmbit</button>`;
   }else{
     const s=stats(p),cs=[...(p.certs||[])].sort((a,b)=>a.month<b.month?1:-1);
     const mes=d=>new Date(d+'T00:00').toLocaleDateString('ca-ES',{month:'long',year:'numeric'});
@@ -159,7 +165,7 @@ function project(){
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
     <div class="code" style="margin-top:18px">${esc(p.code)}</div><div style="font-size:24px;margin:4px 0">${esc(p.name)}</div><div class="sub">${esc(p.client)} · ${n.length} tasques pendents</div></div>
-  <div class="tabs">${[['tasks','Tasques'],['plans','Plànols'],['info','Fitxa']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
+  <div class="tabs">${[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['info','Fitxa']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
   <div style="margin-top:14px">${body}</div>`;
 }
 
@@ -191,7 +197,7 @@ async function saveProject(id){
   busy(true,'Desant…');
   const r=await guard(async()=>id?ok(await sb.from('projects').update(d).eq('id',id).select().single()):ok(await sb.from('projects').insert(d).select().single()));
   busy(false);if(!r)return;
-  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[]});view={name:'project',id:r.id};tab='tasks'}
+  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[],scopes:[]});view={name:'project',id:r.id};tab='tasks'}
   saveCache();closeSheet();render();
 }
 function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',async()=>{
@@ -199,6 +205,82 @@ function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',asyn
   const r=await guard(async()=>{const paths=p.plans.map(x=>x.path);if(paths.length)ok(await sb.storage.from('plans').remove(paths));ok(await sb.from('projects').delete().eq('id',id));return true});
   if(!r)return;for(const x of p.plans){await fdel(x.id);cached.delete(x.id)}
   projects=projects.filter(q=>q.id!==id);saveCache();go({name:'home'})})}
+
+/* ---------- ordre i obres fixades ---------- */
+IC.pin='<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>';
+IC['arrow-up']='<path d="M12 19V5M5 12l7-7 7 7"/>';
+IC['arrow-down']='<path d="M12 5v14M19 12l-7 7-7-7"/>';
+let ordering=false;
+const sortedProjects=()=>[...projects].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.position||0)-(b.position||0)||(a.created_at<b.created_at?1:-1));
+async function moveProject(id,dir){
+  const list=sortedProjects(),i=list.findIndex(p=>p.id===id),j=i+dir;
+  if(j<0||j>=list.length||!!list[j].pinned!==!!list[i].pinned)return;
+  [list[i],list[j]]=[list[j],list[i]];
+  const changed=[];list.forEach((p,k)=>{if(p.position!==k){p.position=k;changed.push(p)}});
+  saveCache();render();
+  const r=await guard(async()=>{for(const p of changed)ok(await sb.from('projects').update({position:p.position}).eq('id',p.id));return true});
+  if(!r)refresh();
+}
+async function togglePin(id){
+  const p=P(id),v=!p.pinned;p.pinned=v;saveCache();render();
+  const r=await guard(async()=>ok(await sb.from('projects').update({pinned:v}).eq('id',id).select().single()));
+  if(!r){p.pinned=!v;saveCache();render()}
+}
+
+/* ---------- àmbits (zones de l'obra amb dates teòriques i reals) ---------- */
+const daysBetween=(a,b)=>Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/864e5);
+function scopeState(x){
+  const t=today();
+  if(x.actual_end)return{t:'Acabat',c:'lime'};
+  if(x.actual_start)return x.planned_end&&x.planned_end<t?{t:'Endarrerit',c:'red'}:{t:'En curs',c:''};
+  if(x.planned_start&&x.planned_start<t)return{t:'Hauria d\'haver començat',c:'red'};
+  return{t:'Pendent',c:''};
+}
+function dev(planned,actual){
+  if(!planned||!actual)return'';
+  const d=daysBetween(planned,actual);
+  if(d===0)return' <span class="ok">· a temps</span>';
+  return d>0?` <span style="color:var(--red)">· +${d} d</span>`:` <span class="ok">· ${d} d</span>`;
+}
+const dfmt=d=>d?fmt(d)+' '+d.slice(0,4):'—';
+function scopeCard(p,x){
+  const st=scopeState(x);
+  return`<button class="card" onclick="editScope('${p.id}','${x.id}')">
+    <div class="row"><div class="ttl" style="margin:0">${esc(x.name)}</div><span class="pill ${st.c}">${esc(st.t)}</span></div>
+    <div class="sgrid">
+      <div><div class="lbl">INICI TEÒRIC</div><div>${dfmt(x.planned_start)}</div></div>
+      <div><div class="lbl">INICI REAL</div><div>${dfmt(x.actual_start)}${dev(x.planned_start,x.actual_start)}</div></div>
+      <div><div class="lbl">FI TEÒRICA</div><div>${dfmt(x.planned_end)}</div></div>
+      <div><div class="lbl">FI REAL</div><div>${dfmt(x.actual_end)}${dev(x.planned_end,x.actual_end)}</div></div>
+    </div></button>`;
+}
+function scopeForm(pid,x){
+  x=x||{name:'',planned_start:'',actual_start:'',planned_end:'',actual_end:''};
+  return`<h3>${x.id?'Editar àmbit':'Nou àmbit'}</h3>
+  <label>NOM</label><input id="s_name" value="${esc(x.name)}" placeholder="Pou nord">
+  <label>INICI TEÒRIC</label><input id="s_ps" type="date" value="${esc(x.planned_start||'')}">
+  <label>INICI REAL</label><input id="s_as" type="date" value="${esc(x.actual_start||'')}">
+  <label>FI TEÒRICA</label><input id="s_pe" type="date" value="${esc(x.planned_end||'')}">
+  <label>FI REAL</label><input id="s_ae" type="date" value="${esc(x.actual_end||'')}">
+  <button class="btn" onclick="saveScope('${pid}','${x.id||''}')">Desar</button>
+  ${x.id?`<button class="btn ghost" style="color:var(--red)" onclick="delScope('${pid}','${x.id}')">${ic('trash')} Eliminar àmbit</button>`:''}
+  <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`;
+}
+const newScope=pid=>sheet(scopeForm(pid));
+const editScope=(pid,id)=>sheet(scopeForm(pid,P(pid).scopes.find(x=>x.id===id)));
+async function saveScope(pid,id){
+  const name=$('#s_name').value.trim();if(!name){toast('Posa un nom a l\'àmbit');return}
+  const d={name,planned_start:$('#s_ps').value||null,actual_start:$('#s_as').value||null,planned_end:$('#s_pe').value||null,actual_end:$('#s_ae').value||null};
+  busy(true,'Desant…');
+  const r=await guard(async()=>id?ok(await sb.from('scopes').update(d).eq('id',id).select().single()):ok(await sb.from('scopes').insert({...d,project_id:pid}).select().single()));
+  busy(false);if(!r)return;
+  const p=P(pid);p.scopes=p.scopes||[];
+  if(id)Object.assign(p.scopes.find(x=>x.id===id),r);else p.scopes.push(r);
+  saveCache();closeSheet();render();
+}
+function delScope(pid,id){closeSheet();ask('Eliminar aquest àmbit?',async()=>{
+  const r=await guard(async()=>{ok(await sb.from('scopes').delete().eq('id',id));return true});
+  if(!r)return;P(pid).scopes=P(pid).scopes.filter(x=>x.id!==id);saveCache();render()})}
 
 /* ---------- certificacions ---------- */
 function newCert(pid){sheet(`<h3>Nova certificació</h3>
@@ -265,24 +347,53 @@ async function openPlan(id){
   const v=document.createElement('div');v.className='viewer';v.id='viewer';
   v.innerHTML=`<div class="vb"><button class="back" style="margin:0" onclick="closeViewer()">${ic('arrow-left')} Tornar</button><span class="vt">${esc(x.name)}</span><div style="display:flex;gap:6px"><button class="ibtn" onclick="setZoom(-.5)" aria-label="Allunyar">−</button><button class="ibtn" onclick="setZoom(.5)" aria-label="Apropar">+</button></div></div>
   <div class="vc" id="vc"><div class="vload">Carregant plànol…</div></div>`;
-  document.body.appendChild(v);const vc=$('#vc');
+  document.body.appendChild(v);const vc=$('#vc');pinchSetup(vc);
   let b;try{b=await planBlob(x)}catch(e){vc.innerHTML=`<div class="vload">${navigator.onLine?'No s\'ha pogut descarregar el plànol.':'Sense connexió i aquest plànol no està descarregat.'}</div>`;return}
   if(!cached.has(x.id)||true){/* ja és a la memòria cau */}
   if((x.type||'').includes('pdf')){
     try{pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';pdfDoc=await pdfjsLib.getDocument({data:await b.arrayBuffer()}).promise;await drawPdf()}
     catch(e){vc.innerHTML=`<div class="vload">No s'ha pogut mostrar aquest PDF.</div>`}
-  }else{curUrl=URL.createObjectURL(b);vc.innerHTML=`<img id="vimg" src="${curUrl}" alt="${esc(x.name)}" style="width:100%">`}
+  }else{curUrl=URL.createObjectURL(b);vc.innerHTML=`<div id="vw"><img id="vimg" src="${curUrl}" alt="${esc(x.name)}" style="width:100%;display:block"></div>`}
   render();
 }
+/* dibuixa el PDF a la mida actual; si ja hi ha una versió dibuixada, la canvia quan la nova és a punt */
 async function drawPdf(){const vc=$('#vc');if(!vc||!pdfDoc)return;const tok=vc._t=(vc._t||0)+1;
-  const w=vc.clientWidth,dpr=Math.min(window.devicePixelRatio||1,2);let first=true;
+  const w=vc.clientWidth,dpr=Math.min(window.devicePixelRatio||1,2),old=$('#vw'),wrap=document.createElement('div');
   for(let i=1;i<=pdfDoc.numPages;i++){
-    const pg=await pdfDoc.getPage(i),vp0=pg.getViewport({scale:1}),sc=(w*zoom)/vp0.width,vp=pg.getViewport({scale:sc*dpr});
-    const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.style.width=(w*zoom)+'px';c.style.height=(vp.height/dpr)+'px';
+    const pg=await pdfDoc.getPage(i),vp0=pg.getViewport({scale:1});
+    let s=((w*zoom)/vp0.width)*dpr;const area=vp0.width*vp0.height*s*s;if(area>14e6)s=Math.sqrt(14e6/(vp0.width*vp0.height));/* límit de memòria de l'iPhone */
+    const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');
+    c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);c.style.width=(w*zoom)+'px';c.style.height=(w*zoom*vp0.height/vp0.width)+'px';c.style.display='block';
     await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-    if(vc._t!==tok)return;if(first){vc.innerHTML='';first=false}vc.appendChild(c);
-  }}
-function setZoom(d){zoom=Math.max(1,Math.min(4,zoom+d));if(pdfDoc){const vc=$('#vc');vc.innerHTML='<div class="vload">Carregant…</div>';drawPdf()}else{const i=$('#vimg');if(i)i.style.width=(zoom*100)+'%'}}
+    if(vc._t!==tok)return;
+    wrap.appendChild(c);
+    if(!old&&i===1){vc.innerHTML='';wrap.id='vw';vc.appendChild(wrap)}
+  }
+  if(old&&vc._t===tok){old.replaceWith(wrap);wrap.id='vw'}
+}
+function setZoom(d){setZoomTo(zoom+d)}
+async function setZoomTo(nz){
+  nz=Math.max(1,Math.min(5,nz));const vc=$('#vc');if(!vc)return;
+  const cx=vc.clientWidth/2,cy=vc.clientHeight/2,rx=(vc.scrollLeft+cx)/(vc.scrollWidth||1),ry=(vc.scrollTop+cy)/(vc.scrollHeight||1);
+  zoom=nz;
+  if(pdfDoc)await drawPdf();
+  else{const i=$('#vimg');if(i){i.style.width=(zoom*100)+'%';const w=$('#vw');if(w)w.style.transform=''}}
+  vc.scrollLeft=rx*vc.scrollWidth-cx;vc.scrollTop=ry*vc.scrollHeight-cy;
+}
+/* pinça amb dos dits dins del visor (la resta de l'app no fa zoom) */
+function pinchSetup(vc){
+  let d0=0,k=1;
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  vc.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);k=1}},{passive:true});
+  vc.addEventListener('touchmove',e=>{
+    if(e.touches.length===2&&d0){e.preventDefault();k=Math.max(1/zoom,Math.min(5/zoom,dist(e.touches)/d0));
+      const w=$('#vw');if(w){w.style.transformOrigin='0 0';w.style.transform=`scale(${k})`}}
+  },{passive:false});
+  vc.addEventListener('touchend',e=>{
+    if(d0&&e.touches.length<2){const nz=zoom*k;d0=0;k=1;
+      if(Math.abs(nz-zoom)>.05)setZoomTo(nz);else{const w=$('#vw');if(w)w.style.transform=''}}
+  });
+}
 function closeViewer(){$('#viewer')?.remove();pdfDoc=null;curUrl&&URL.revokeObjectURL(curUrl);curUrl=null}
 
 /* ---------- compte i avisos del matí ---------- */
@@ -315,6 +426,9 @@ async function boot(){
   user=data.session.user;await start();
 }
 sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&user){user=null;login()}});
+/* com una app de veritat: sense zoom de pàgina (només el visor de plànols en té, amb la seva pròpia pinça) */
+['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
 addEventListener('online',()=>{if(user)refresh()});
 addEventListener('offline',()=>{offline=true;if(user)render()});
 boot();
