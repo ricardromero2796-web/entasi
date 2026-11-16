@@ -38,6 +38,16 @@ let projects=(()=>{try{return JSON.parse(localStorage.getItem(CK))||[]}catch(e){
 const saveCache=()=>{try{localStorage.setItem(CK,JSON.stringify(projects))}catch(e){}};
 let user=null,view={name:'home'},tab='tasks',offline=false,cached=new Set();
 const P=id=>projects.find(p=>p.id===id);
+const eur=n=>new Intl.NumberFormat('ca-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(+n||0);
+/* progrés: % executat = certificat acumulat / pressupost; % termini = temps passat / durada */
+function stats(p){
+  const bud=+p.budget||0,cert=(p.certs||[]).reduce((s,c)=>s+(+c.amount||0),0);
+  const exec=bud>0?cert/bud*100:null;
+  let time=null;
+  if(p.start_date&&p.end_date){const a=new Date(p.start_date+'T00:00'),b=new Date(p.end_date+'T00:00'),n=new Date();if(b>a)time=Math.max(0,Math.min(100,(n-a)/(b-a)*100))}
+  const late=exec!==null&&time!==null&&time-Math.min(exec,100)>=10&&p.status!=='Acabada';
+  return{bud,cert,exec,time,late};
+}
 
 /* fitxers dels plànols guardats al dispositiu (per veure'ls sense cobertura) */
 const DB=new Promise((res,rej)=>{const r=indexedDB.open('entasi-files',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
@@ -72,7 +82,7 @@ async function logout(){closeSheet();await sb.auth.signOut();user=null;projects=
 /* ---------- dades ---------- */
 async function refresh(){
   try{
-    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*)').order('created_at',{ascending:false}));
+    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*)').order('created_at',{ascending:false}));
     projects=data;saveCache();offline=false;render();
   }catch(e){offline=true;render();toast(navigator.onLine?'No s\'han pogut carregar les dades':'Sense connexió: es mostren les dades desades')}
 }
@@ -98,12 +108,13 @@ function home(){
     <div class="stats"><div class="stat"><b>${projects.length}</b><span>Obres</span></div><div class="stat"><b>${all.length}</b><span>Tasques pendents</span></div><div class="stat"><b style="color:var(--lime)">${urgent}</b><span>Urgents</span></div></div>
   </div>
   <div class="sec"><h2>Les meves obres</h2></div>
-  ${projects.length?projects.map(p=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length;return`
+  ${projects.length?projects.map(p=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);return`
   <button class="card" onclick="go({name:'project',id:'${p.id}'},'tasks')">
-    <div class="row"><span class="code">${esc(p.code)}</span>${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:`<span class="pill lime">${esc(p.status)}</span>`}</div>
+    <div class="row"><span class="code">${esc(p.code)}</span><span style="display:flex;gap:6px">${s.late?'<span class="pill red">Endarrerida</span>':''}${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}${!s.late&&!u?`<span class="pill lime">${esc(p.status)}</span>`:''}</span></div>
     <div class="ttl">${esc(p.name)}</div><div class="mu">${esc(p.client)}</div>
-    <div class="bar"><i style="width:${p.progress||0}%"></i></div>
-    <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${p.progress||0}%</span></div></button>`}).join(''):`<div class="empty">Encara no tens cap obra.<br>Afegeix la primera amb el botó de sota.</div>`}
+    ${s.bud>0?`<div class="row" style="margin-top:14px;align-items:flex-end"><div><div class="mu" style="font-size:11px;letter-spacing:.08em">CERTIFICAT</div><div style="font-size:17px">${eur(s.cert)}</div></div><div style="text-align:right"><div class="mu" style="font-size:11px;letter-spacing:.08em">ADJUDICAT</div><div style="font-size:17px">${eur(s.bud)}</div></div></div>`:''}
+    <div class="bar"><i style="width:${Math.min(100,s.exec||0)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
+    <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${s.exec!==null?Math.round(s.exec)+'% executat':'Sense pressupost'}</span></div></button>`}).join(''):`<div class="empty">Encara no tens cap obra.<br>Afegeix la primera amb el botó de sota.</div>`}
   <button class="fab" onclick="newProject()">${ic('plus')} Nova obra</button>`;
 }
 
@@ -126,7 +137,18 @@ function project(){
       <button class="sm" onclick="delPlan('${p.id}','${x.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
   }else{
-    body=`<div class="card">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Progrés',(p.progress||0)+'%']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
+    const s=stats(p),cs=[...(p.certs||[])].sort((a,b)=>a.month<b.month?1:-1);
+    const mes=d=>new Date(d+'T00:00').toLocaleDateString('ca-ES',{month:'long',year:'numeric'});
+    body=`<div class="card"><div class="mu" style="margin-bottom:8px;letter-spacing:.1em;font-size:12px">PROGRÉS DE L'OBRA</div>
+      ${s.exec!==null?`<div style="font-size:30px">${Math.round(s.exec)}<span style="font-size:16px"> % executat</span></div>
+      <div class="bar" style="margin:10px 0 8px"><i style="width:${Math.min(100,s.exec)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
+      <div class="row mu"><span>${eur(s.cert)} de ${eur(s.bud)}</span>${s.time!==null?`<span>${Math.round(s.time)}% del termini</span>`:''}</div>
+      ${s.late?`<div class="pill red" style="margin-top:10px;display:inline-block">Endarrerida: ${Math.round(s.exec)}% executat i ${Math.round(s.time)}% del termini consumit</div>`:''}`
+      :`<div class="mu">Posa el pressupost d'adjudicació a <b>Editar obra</b> i afegeix les certificacions perquè l'app calculi el progrés.</div>`}</div>
+      <div class="sec" style="margin:18px 4px 10px"><h2>Certificacions</h2></div>
+      ${cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="mu" style="margin:0 4px 10px">Encara no n'hi ha cap.</div>`}
+      <button class="btn ghost" style="margin-top:4px" onclick="newCert('${p.id}')">${ic('plus')} Afegir certificació</button>
+      <div class="card" style="margin-top:18px">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Inici',p.start_date?fmt(p.start_date)+' '+p.start_date.slice(0,4):'—'],['Final del termini',p.end_date?fmt(p.end_date)+' '+p.end_date.slice(0,4):'—']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
       <div class="kv"><span class="mu">Adreça</span><span style="text-align:right">${esc(p.address)||'—'}</span></div></div>
       ${p.address?`<a class="btn" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}">${ic('route')} Com arribar-hi</a>`:''}
       <button class="btn ghost" onclick="editProject('${p.id}')">${ic('edit')} Editar obra</button>
@@ -150,24 +172,26 @@ function busy(on,txt){const b=$('#sheet .btn:not(.ghost)');if(b){b.disabled=on;i
 
 /* ---------- obres ---------- */
 function projectForm(p){
-  p=p||{code:'',name:'',client:'',address:'',status:'En curs',progress:0};
+  p=p||{code:'',name:'',client:'',address:'',status:'En curs',budget:'',start_date:'',end_date:''};
   return`<h3>${p.id?'Editar obra':'Nova obra'}</h3>
   <label>CODI</label><input id="f_code" value="${esc(p.code)}" placeholder="P080">
   <label>NOM DE L'OBRA</label><input id="f_name" value="${esc(p.name)}" placeholder="Urbanització carrer Major">
   <label>CLIENT</label><input id="f_client" value="${esc(p.client)}" placeholder="Ajuntament">
   <label>ADREÇA</label><input id="f_addr" value="${esc(p.address)}" placeholder="Carrer, població">
   <label>ESTAT</label><select id="f_status">${['Projecte','En curs','Aturada','Acabada'].map(s=>`<option ${p.status===s?'selected':''}>${s}</option>`).join('')}</select>
-  <label>PROGRÉS (%)</label><input id="f_prog" type="number" min="0" max="100" value="${p.progress||0}">
+  <label>PRESSUPOST D'ADJUDICACIÓ (€)</label><input id="f_budget" type="number" inputmode="decimal" min="0" step="0.01" value="${p.budget||''}" placeholder="850000">
+  <label>DATA D'INICI</label><input id="f_start" type="date" value="${esc(p.start_date||'')}">
+  <label>FINAL DEL TERMINI</label><input id="f_end" type="date" value="${esc(p.end_date||'')}">
   <button class="btn" onclick="saveProject('${p.id||''}')">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`}
 const newProject=()=>sheet(projectForm());
 const editProject=id=>sheet(projectForm(P(id)));
 async function saveProject(id){
   const name=$('#f_name').value.trim();if(!name){toast('Posa un nom a l\'obra');return}
-  const d={code:$('#f_code').value.trim()||'P---',name,client:$('#f_client').value.trim(),address:$('#f_addr').value.trim(),status:$('#f_status').value,progress:Math.max(0,Math.min(100,+$('#f_prog').value||0))};
+  const d={code:$('#f_code').value.trim()||'P---',name,client:$('#f_client').value.trim(),address:$('#f_addr').value.trim(),status:$('#f_status').value,budget:Math.max(0,parseFloat($('#f_budget').value)||0),start_date:$('#f_start').value||null,end_date:$('#f_end').value||null};
   busy(true,'Desant…');
   const r=await guard(async()=>id?ok(await sb.from('projects').update(d).eq('id',id).select().single()):ok(await sb.from('projects').insert(d).select().single()));
   busy(false);if(!r)return;
-  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[]});view={name:'project',id:r.id};tab='tasks'}
+  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[]});view={name:'project',id:r.id};tab='tasks'}
   saveCache();closeSheet();render();
 }
 function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',async()=>{
@@ -175,6 +199,22 @@ function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',asyn
   const r=await guard(async()=>{const paths=p.plans.map(x=>x.path);if(paths.length)ok(await sb.storage.from('plans').remove(paths));ok(await sb.from('projects').delete().eq('id',id));return true});
   if(!r)return;for(const x of p.plans){await fdel(x.id);cached.delete(x.id)}
   projects=projects.filter(q=>q.id!==id);saveCache();go({name:'home'})})}
+
+/* ---------- certificacions ---------- */
+function newCert(pid){sheet(`<h3>Nova certificació</h3>
+  <label>MES</label><input id="c_m" type="month" value="${today().slice(0,7)}">
+  <label>IMPORT CERTIFICAT AQUEST MES (€, NO L'ACUMULAT)</label><input id="c_a" type="number" inputmode="decimal" min="0" step="0.01" placeholder="45000">
+  <label>NOTA (opcional)</label><input id="c_n" placeholder="Certificació núm. 3">
+  <button class="btn" onclick="saveCert('${pid}')">Afegir</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+async function saveCert(pid){
+  const m=$('#c_m').value,a=parseFloat($('#c_a').value);
+  if(!m){toast('Tria el mes');return}if(isNaN(a)||a<0){toast('Escriu l\'import');return}
+  busy(true,'Desant…');
+  const r=await guard(async()=>ok(await sb.from('certifications').insert({project_id:pid,month:m+'-01',amount:a,note:$('#c_n').value.trim()}).select().single()));
+  busy(false);if(!r)return;(P(pid).certs=P(pid).certs||[]).push(r);saveCache();closeSheet();render()}
+function delCert(pid,id){ask('Eliminar aquesta certificació?',async()=>{
+  const r=await guard(async()=>{ok(await sb.from('certifications').delete().eq('id',id));return true});
+  if(!r)return;P(pid).certs=P(pid).certs.filter(c=>c.id!==id);saveCache();render()})}
 
 /* ---------- tasques ---------- */
 function newTask(pid){sheet(`<h3>Nova tasca</h3><label>QUÈ HAS DE FER?</label><textarea id="t_text" rows="3" placeholder="Revisar armat del mur"></textarea>

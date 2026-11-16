@@ -80,3 +80,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--teal)}
 .ok{color:var(--teal)}
 .btn:disabled{opacity:.6}
 .hdr .top{align-items:flex-start}
+.bar{position:relative;overflow:visible}
+.bar i{border-radius:5px}
+.mark{position:absolute;top:-4px;width:2px;height:13px;background:var(--tx);opacity:.75;border-radius:1px;margin-left:-1px}
