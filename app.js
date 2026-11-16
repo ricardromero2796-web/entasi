@@ -258,10 +258,12 @@ function scopeForm(pid,x){
   x=x||{name:'',planned_start:'',actual_start:'',planned_end:'',actual_end:''};
   return`<h3>${x.id?'Editar àmbit':'Nou àmbit'}</h3>
   <label>NOM</label><input id="s_name" value="${esc(x.name)}" placeholder="Pou nord">
-  <label>INICI TEÒRIC</label><input id="s_ps" type="date" value="${esc(x.planned_start||'')}">
-  <label>INICI REAL</label><input id="s_as" type="date" value="${esc(x.actual_start||'')}">
-  <label>FI TEÒRICA</label><input id="s_pe" type="date" value="${esc(x.planned_end||'')}">
-  <label>FI REAL</label><input id="s_ae" type="date" value="${esc(x.actual_end||'')}">
+  <div class="dgrid">
+  <div><label>INICI TEÒRIC</label><input id="s_ps" type="date" value="${esc(x.planned_start||'')}"></div>
+  <div><label>INICI REAL</label><input id="s_as" type="date" value="${esc(x.actual_start||'')}"></div>
+  <div><label>FI TEÒRICA</label><input id="s_pe" type="date" value="${esc(x.planned_end||'')}"></div>
+  <div><label>FI REAL</label><input id="s_ae" type="date" value="${esc(x.actual_end||'')}"></div>
+  </div>
   <button class="btn" onclick="saveScope('${pid}','${x.id||''}')">Desar</button>
   ${x.id?`<button class="btn ghost" style="color:var(--red)" onclick="delScope('${pid}','${x.id}')">${ic('trash')} Eliminar àmbit</button>`:''}
   <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`;

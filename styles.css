@@ -94,3 +94,13 @@ input,select,textarea{font-size:16px;-webkit-user-select:text;user-select:text}
 .lbl{font-size:11px;letter-spacing:.08em;color:var(--mu);margin-bottom:2px}
 .tabs button{font-size:13px;padding:11px 2px}
 .sec .pill{border:0}
+
+/* Tot ha d'encaixar a l'amplada de la pantalla */
+html,body{max-width:100%;overflow-x:hidden}
+#app,.sheet>div{max-width:100%;overflow-x:hidden}
+.sheet>div{overflow-y:auto}
+input,select,textarea{min-width:0;max-width:100%;display:block}
+input[type=date]{-webkit-appearance:none;appearance:none;min-height:48px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;min-width:0}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.dgrid>div{min-width:0}
