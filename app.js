@@ -1,5 +1,5 @@
 const LOGO=`<div class="logo3d"><img class="em" alt="" src="data:image/png;base64,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"><img class="wm" alt="ENTASI" src="data:image/png;base64,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"></div>`;
-const IC={bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+const IC={users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
 'bell-ringing':'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M2 8c0-2.2.7-4.3 2-6M22 8a10 10 0 0 0-2-6"/>',
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>',
 moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',plus:'<path d="M12 5v14M5 12h14"/>',
@@ -36,7 +36,7 @@ let pref=(()=>{try{return Object.assign({},defPref,JSON.parse(localStorage.getIt
 const savePref=()=>{try{localStorage.setItem(PK,JSON.stringify(pref))}catch(e){}};
 let projects=(()=>{try{return JSON.parse(localStorage.getItem(CK))||[]}catch(e){return[]}})();
 const saveCache=()=>{try{localStorage.setItem(CK,JSON.stringify(projects))}catch(e){}};
-let user=null,view={name:'home'},tab='tasks',offline=false,cached=new Set();
+let user=null,view={name:'home'},tab='tasks',sub='certs',offline=false,cached=new Set();
 const P=id=>projects.find(p=>p.id===id);
 const eur=n=>new Intl.NumberFormat('ca-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(+n||0);
 /* progrés: % executat = certificat acumulat / pressupost; % termini = temps passat / durada */
@@ -82,7 +82,7 @@ async function logout(){closeSheet();await sb.auth.signOut();user=null;projects=
 /* ---------- dades ---------- */
 async function refresh(){
   try{
-    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*), scopes(*)').order('created_at',{ascending:false}));
+    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*), scopes(*), meetings(*)').order('created_at',{ascending:false}));
     projects=data;saveCache();offline=false;render();
   }catch(e){offline=true;render();toast(navigator.onLine?'No s\'han pogut carregar les dades':'Sense connexió: es mostren les dades desades')}
 }
@@ -143,29 +143,33 @@ function project(){
     body=(sc.length?sc.map(x=>scopeCard(p,x)).join(''):`<div class="empty">Cap àmbit encara.<br>Afegeix zones de l'obra, com "Pou nord", per seguir-ne les dates.</div>`)
       +`<button class="fab" onclick="newScope('${p.id}')">${ic('plus')} Nou àmbit</button>`;
   }else{
-    const s=stats(p),cs=[...(p.certs||[])].sort((a,b)=>a.month<b.month?1:-1);
+    const s=stats(p),cs=[...(p.certs||[])].sort((a,b)=>a.month<b.month?1:-1),ms=[...(p.meetings||[])].sort((a,b)=>a.date<b.date?1:-1);
     const mes=d=>new Date(d+'T00:00').toLocaleDateString('ca-ES',{month:'long',year:'numeric'});
-    body=`<div class="card"><div class="mu" style="margin-bottom:8px;letter-spacing:.1em;font-size:12px">PROGRÉS DE L'OBRA</div>
-      ${s.exec!==null?`<div style="font-size:30px">${Math.round(s.exec)}<span style="font-size:16px"> % executat</span></div>
-      <div class="bar" style="margin:10px 0 8px"><i style="width:${Math.min(100,s.exec)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
-      <div class="row mu"><span>${eur(s.cert)} de ${eur(s.bud)}</span>${s.time!==null?`<span>${Math.round(s.time)}% del termini</span>`:''}</div>
-      ${s.late?`<div class="pill red" style="margin-top:10px;display:inline-block">Endarrerida: ${Math.round(s.exec)}% executat i ${Math.round(s.time)}% del termini consumit</div>`:''}`
-      :`<div class="mu">Posa el pressupost d'adjudicació a <b>Editar obra</b> i afegeix les certificacions perquè l'app calculi el progrés.</div>`}</div>
-      <div class="sec" style="margin:18px 4px 10px"><h2>Certificacions</h2></div>
-      ${cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="mu" style="margin:0 4px 10px">Encara no n'hi ha cap.</div>`}
-      <button class="btn ghost" style="margin-top:4px" onclick="newCert('${p.id}')">${ic('plus')} Afegir certificació</button>
-      <div class="card" style="margin-top:18px">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Inici',p.start_date?fmt(p.start_date)+' '+p.start_date.slice(0,4):'—'],['Final del termini',p.end_date?fmt(p.end_date)+' '+p.end_date.slice(0,4):'—']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
+    const subs=[['certs','Certificacions'],['meets','Reunions'],['data','Dades']];
+    let inner='';
+    if(sub==='certs'){
+      inner=(s.exec!==null?`<div class="card"><div class="mu" style="font-size:12px;letter-spacing:.1em;margin-bottom:6px">CERTIFICAT</div><div style="font-size:26px">${eur(s.cert)}<span style="font-size:14px" class="mu"> de ${eur(s.bud)}</span></div><div class="bar" style="margin:10px 0 0"><i style="width:${Math.min(100,s.exec)}%"></i></div></div>`
+        :`<div class="mu" style="margin:0 4px 12px">Posa el pressupost d'adjudicació a <b>Dades › Editar obra</b> perquè l'app calculi l'avanç.</div>`)
+        +(cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap certificació encara.</div>`)
+        +`<button class="fab" onclick="newCert('${p.id}')">${ic('plus')} Afegir certificació</button>`;
+    }else if(sub==='meets'){
+      inner=(ms.length?ms.map(m=>`<button class="card meet" onclick="editMeeting('${p.id}','${m.id}')"><div class="row"><b>${fmt(m.date)} ${m.date.slice(0,4)}</b><span class="mu">${esc(m.title||'')}</span></div>${m.attendees?`<div class="mu" style="margin-top:4px">${ic('users')} ${esc(m.attendees)}</div>`:''}<div class="mnotes">${esc(m.notes||'')}</div></button>`).join(''):`<div class="empty">Cap reunió encara.<br>Apunta aquí les reunions setmanals.</div>`)
+        +`<button class="fab" onclick="newMeeting('${p.id}')">${ic('plus')} Nova reunió</button>`;
+    }else{
+      inner=`<div class="card">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Inici',p.start_date?fmt(p.start_date)+' '+p.start_date.slice(0,4):'—'],['Final del termini',p.end_date?fmt(p.end_date)+' '+p.end_date.slice(0,4):'—']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
       <div class="kv"><span class="mu">Adreça</span><span style="text-align:right">${esc(p.address)||'—'}</span></div></div>
       ${p.address?`<a class="btn" style="display:block;text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}">${ic('route')} Com arribar-hi</a>`:''}
       <button class="btn ghost" onclick="editProject('${p.id}')">${ic('edit')} Editar obra</button>
       <button class="btn ghost" style="color:var(--red)" onclick="delProject('${p.id}')">${ic('trash')} Eliminar obra</button>`;
+    }
+    body=`<div class="subs">${subs.map(([k,l])=>`<button class="${sub===k?'on':''}" onclick="sub='${k}';render()">${l}</button>`).join('')}</div>`+inner;
   }
   $('#app').innerHTML=`
   <div class="hdr" style="padding-bottom:22px">
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
     <div class="code" style="margin-top:18px">${esc(p.code)}</div><div style="font-size:24px;margin:4px 0">${esc(p.name)}</div><div class="sub">${esc(p.client)} · ${n.length} tasques pendents</div></div>
-  <div class="tabs">${[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['info','Fitxa']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
+  <div class="tabs">${[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
   <div style="margin-top:14px">${body}</div>`;
 }
 
@@ -197,7 +201,7 @@ async function saveProject(id){
   busy(true,'Desant…');
   const r=await guard(async()=>id?ok(await sb.from('projects').update(d).eq('id',id).select().single()):ok(await sb.from('projects').insert(d).select().single()));
   busy(false);if(!r)return;
-  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[],scopes:[]});view={name:'project',id:r.id};tab='tasks'}
+  if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[],scopes:[],meetings:[]});view={name:'project',id:r.id};tab='tasks'}
   saveCache();closeSheet();render();
 }
 function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',async()=>{
@@ -297,6 +301,32 @@ async function saveCert(pid){
   const r=await guard(async()=>ok(await sb.from('certifications').insert({project_id:pid,month:m+'-01',amount:a,note:$('#c_n').value.trim()}).select().single()));
   busy(false);if(!r)return;(P(pid).certs=P(pid).certs||[]).push(r);saveCache();closeSheet();render()}
 function delCert(pid,id){ask('Eliminar aquesta certificació?',async()=>{
+
+/* ---------- reunions ---------- */
+function meetingForm(pid,m){
+  m=m||{date:today(),title:'',attendees:'',notes:''};
+  return`<h3>${m.id?'Editar reunió':'Nova reunió'}</h3>
+  <label>DATA</label><input id="m_d" type="date" value="${esc(m.date)}">
+  <label>TÍTOL (opcional)</label><input id="m_t" value="${esc(m.title||'')}" placeholder="Reunió setmanal d'obra">
+  <label>ASSISTENTS</label><input id="m_a" value="${esc(m.attendees||'')}" placeholder="Ricard, DF, contractista…">
+  <label>NOTES I ACORDS</label><textarea id="m_n" rows="7" placeholder="Temes tractats, acords, pendents…">${esc(m.notes||'')}</textarea>
+  <button class="btn" onclick="saveMeeting('${pid}','${m.id||''}')">Desar</button>
+  ${m.id?`<button class="btn ghost" style="color:var(--red)" onclick="delMeeting('${pid}','${m.id}')">${ic('trash')} Eliminar reunió</button>`:''}
+  <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`;
+}
+const newMeeting=pid=>sheet(meetingForm(pid));
+const editMeeting=(pid,id)=>sheet(meetingForm(pid,P(pid).meetings.find(m=>m.id===id)));
+async function saveMeeting(pid,id){
+  const d=$('#m_d').value;if(!d){toast('Tria la data');return}
+  const row={date:d,title:$('#m_t').value.trim(),attendees:$('#m_a').value.trim(),notes:$('#m_n').value.trim()};
+  busy(true,'Desant…');
+  const r=await guard(async()=>id?ok(await sb.from('meetings').update(row).eq('id',id).select().single()):ok(await sb.from('meetings').insert({...row,project_id:pid}).select().single()));
+  busy(false);if(!r)return;const p=P(pid);p.meetings=p.meetings||[];
+  if(id)Object.assign(p.meetings.find(m=>m.id===id),r);else p.meetings.push(r);
+  saveCache();closeSheet();render()}
+function delMeeting(pid,id){ask('Eliminar aquesta reunió?',async()=>{
+  const r=await guard(async()=>{ok(await sb.from('meetings').delete().eq('id',id));return true});
+  if(!r)return;P(pid).meetings=P(pid).meetings.filter(m=>m.id!==id);saveCache();render()})}
   const r=await guard(async()=>{ok(await sb.from('certifications').delete().eq('id',id));return true});
   if(!r)return;P(pid).certs=P(pid).certs.filter(c=>c.id!==id);saveCache();render()})}
 
@@ -342,59 +372,84 @@ async function planBlob(x){let b=await fget(x.id);if(b)return b;
   const d=ok(await sb.storage.from('plans').download(x.path));await fput(x.id,d);cached.add(x.id);return d}
 async function cachePlan(id){const x=findPlan(id);toast('Descarregant…');const r=await guard(()=>planBlob(x));if(r){render();toast('Plànol disponible sense cobertura')}}
 
-/* visor: PDF dibuixat amb pdf.js, amb zoom */
-let pdfDoc=null,zoom=1,curUrl=null;
+/* visor: PDF amb pdf.js. Base nítida a mida pantalla + capa de detall a resolució completa només de la part visible */
+let pdfDoc=null,zoom=1,curUrl=null,dtok=0,dtasks=[];
 async function openPlan(id){
   const x=findPlan(id);zoom=1;pdfDoc=null;
   const v=document.createElement('div');v.className='viewer';v.id='viewer';
-  v.innerHTML=`<div class="vb"><button class="back" style="margin:0" onclick="closeViewer()">${ic('arrow-left')} Tornar</button><span class="vt">${esc(x.name)}</span><div style="display:flex;gap:6px"><button class="ibtn" onclick="setZoom(-.5)" aria-label="Allunyar">−</button><button class="ibtn" onclick="setZoom(.5)" aria-label="Apropar">+</button></div></div>
+  v.innerHTML=`<div class="vb"><button class="back" style="margin:0" onclick="closeViewer()">${ic('arrow-left')} Tornar</button><span class="vt">${esc(x.name)}</span><div style="display:flex;gap:6px"><button class="ibtn" onclick="applyZoom(zoom/1.5)" aria-label="Allunyar">−</button><button class="ibtn" onclick="applyZoom(zoom*1.5)" aria-label="Apropar">+</button></div></div>
   <div class="vc" id="vc"><div class="vload">Carregant plànol…</div></div>`;
   document.body.appendChild(v);const vc=$('#vc');pinchSetup(vc);
+  vc.addEventListener('scroll',()=>{clearTimeout(vc._d);vc._d=setTimeout(renderDetail,140)},{passive:true});
   let b;try{b=await planBlob(x)}catch(e){vc.innerHTML=`<div class="vload">${navigator.onLine?'No s\'ha pogut descarregar el plànol.':'Sense connexió i aquest plànol no està descarregat.'}</div>`;return}
-  if(!cached.has(x.id)||true){/* ja és a la memòria cau */}
   if((x.type||'').includes('pdf')){
-    try{pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';pdfDoc=await pdfjsLib.getDocument({data:await b.arrayBuffer()}).promise;await drawPdf()}
+    try{pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';pdfDoc=await pdfjsLib.getDocument({data:await b.arrayBuffer()}).promise;await buildPdf()}
     catch(e){vc.innerHTML=`<div class="vload">No s'ha pogut mostrar aquest PDF.</div>`}
-  }else{curUrl=URL.createObjectURL(b);vc.innerHTML=`<div id="vw"><img id="vimg" src="${curUrl}" alt="${esc(x.name)}" style="width:100%;display:block"></div>`}
+  }else{curUrl=URL.createObjectURL(b);vc.innerHTML=`<div id="vw"><img id="vimg" src="${curUrl}" alt="${esc(x.name)}" style="display:block;width:100%"></div>`}
   render();
 }
-/* dibuixa el PDF a la mida actual; si ja hi ha una versió dibuixada, la canvia quan la nova és a punt */
-async function drawPdf(){const vc=$('#vc');if(!vc||!pdfDoc)return;const tok=vc._t=(vc._t||0)+1;
-  const w=vc.clientWidth,dpr=Math.min(window.devicePixelRatio||1,2),old=$('#vw'),wrap=document.createElement('div');
+async function buildPdf(){
+  const vc=$('#vc');if(!vc||!pdfDoc)return;
+  const dpr=Math.min(window.devicePixelRatio||1,3),w=vc.clientWidth,wrap=document.createElement('div');wrap.id='vw';wrap.style.width=w+'px';
+  const pages=[];
   for(let i=1;i<=pdfDoc.numPages;i++){
-    const pg=await pdfDoc.getPage(i),vp0=pg.getViewport({scale:1});
-    let s=((w*zoom)/vp0.width)*dpr;const area=vp0.width*vp0.height*s*s;if(area>14e6)s=Math.sqrt(14e6/(vp0.width*vp0.height));/* límit de memòria de l'iPhone */
-    const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');
-    c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);c.style.width=(w*zoom)+'px';c.style.height=(w*zoom*vp0.height/vp0.width)+'px';c.style.display='block';
-    await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
-    if(vc._t!==tok)return;
-    wrap.appendChild(c);
-    if(!old&&i===1){vc.innerHTML='';wrap.id='vw';vc.appendChild(wrap)}
+    const pg=await pdfDoc.getPage(i),vp0=pg.getViewport({scale:1}),pw=document.createElement('div');
+    pw.className='pgw';pw.dataset.n=i;pw.dataset.ar=vp0.height/vp0.width;pw.style.width=w+'px';pw.style.height=(w*vp0.height/vp0.width)+'px';
+    wrap.appendChild(pw);pages.push([pg,vp0,pw]);
   }
-  if(old&&vc._t===tok){old.replaceWith(wrap);wrap.id='vw'}
+  vc.innerHTML='';vc.appendChild(wrap);
+  for(const[pg,vp0,pw]of pages){
+    let s=(w/vp0.width)*dpr;if(vp0.width*vp0.height*s*s>3.5e6)s=Math.sqrt(3.5e6/(vp0.width*vp0.height));
+    const vp=pg.getViewport({scale:s}),c=document.createElement('canvas');c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+    await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    if(!$('#vc'))return;pw.insertBefore(c,pw.firstChild);
+    if(pw===pages[0][2])renderDetail();
+  }
+  renderDetail();
 }
-function setZoom(d){setZoomTo(zoom+d)}
-async function setZoomTo(nz){
-  nz=Math.max(1,Math.min(5,nz));const vc=$('#vc');if(!vc)return;
-  const cx=vc.clientWidth/2,cy=vc.clientHeight/2,rx=(vc.scrollLeft+cx)/(vc.scrollWidth||1),ry=(vc.scrollTop+cy)/(vc.scrollHeight||1);
-  zoom=nz;
-  if(pdfDoc)await drawPdf();
-  else{const i=$('#vimg');if(i){i.style.width=(zoom*100)+'%';const w=$('#vw');if(w)w.style.transform=''}}
-  vc.scrollLeft=rx*vc.scrollWidth-cx;vc.scrollTop=ry*vc.scrollHeight-cy;
+async function renderDetail(){
+  const vc=$('#vc');if(!vc||!pdfDoc)return;const tok=++dtok;
+  dtasks.forEach(t=>{try{t.cancel()}catch(e){}});dtasks=[];
+  const dpr=Math.min(window.devicePixelRatio||1,3),vr=vc.getBoundingClientRect();
+  for(const pw of vc.querySelectorAll('.pgw')){
+    const r=pw.getBoundingClientRect(),x0=Math.max(vr.left,r.left),x1=Math.min(vr.right,r.right),y0=Math.max(vr.top,r.top),y1=Math.min(vr.bottom,r.bottom);
+    if(x1-x0<2||y1-y0<2)continue;
+    const pg=await pdfDoc.getPage(+pw.dataset.n);if(tok!==dtok)return;
+    const vp0=pg.getViewport({scale:1}),lx=x0-r.left,ly=y0-r.top,rw=x1-x0,rh=y1-y0;
+    let d=dpr;if(rw*rh*d*d>9e6)d=Math.sqrt(9e6/(rw*rh));
+    const s=(r.width/vp0.width)*d,c=document.createElement('canvas');c.width=Math.ceil(rw*d);c.height=Math.ceil(rh*d);
+    c.className='det';c.style.cssText=`left:${lx}px;top:${ly}px;width:${rw}px;height:${rh}px`;
+    const task=pg.render({canvasContext:c.getContext('2d'),viewport:pg.getViewport({scale:s,offsetX:-lx*d,offsetY:-ly*d})});dtasks.push(task);
+    try{await task.promise}catch(e){return}
+    if(tok!==dtok)return;pw.querySelectorAll('.det').forEach(o=>o.remove());pw.appendChild(c);
+  }
 }
-/* pinça amb dos dits dins del visor (la resta de l'app no fa zoom) */
+/* canvia el zoom a l'instant (sense tornar a dibuixar) mantenint el punt (cx,cy) del contingut sota (mx,my) de la pantalla */
+function applyZoom(nz,mx,my,cx,cy){
+  const vc=$('#vc'),vw=$('#vw');if(!vc||!vw)return;nz=Math.max(1,Math.min(8,nz));
+  if(mx==null){mx=vc.clientWidth/2;my=vc.clientHeight/2}
+  if(cx==null){cx=vc.scrollLeft+mx;cy=vc.scrollTop+my}
+  const r=nz/zoom,w=vc.clientWidth*nz;zoom=nz;
+  vw.style.transform='';vw.style.width=w+'px';
+  vw.querySelectorAll('.pgw').forEach(p=>{p.style.width=w+'px';p.style.height=(w*p.dataset.ar)+'px';p.querySelectorAll('.det').forEach(o=>o.remove())});
+  const i=$('#vimg');if(i)i.style.width=w+'px';
+  vc.scrollLeft=cx*r-mx;vc.scrollTop=cy*r-my;
+  clearTimeout(vc._d);vc._d=setTimeout(renderDetail,80);
+}
+/* pinça amb dos dits: vista prèvia amb transform al punt entre els dits i, en deixar anar, es fixa al mateix punt */
 function pinchSetup(vc){
-  let d0=0,k=1;
+  let d0=0,k=1,cx=0,cy=0,sx=0,sy=0,mx=0,my=0;
   const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
-  vc.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);k=1}},{passive:true});
+  const mid=t=>{const r=vc.getBoundingClientRect();return[(t[0].clientX+t[1].clientX)/2-r.left,(t[0].clientY+t[1].clientY)/2-r.top]};
+  vc.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);k=1;[sx,sy]=mid(e.touches);mx=sx;my=sy;cx=vc.scrollLeft+sx;cy=vc.scrollTop+sy;
+    const w=$('#vw');if(w){w.style.transformOrigin=`${cx}px ${cy}px`;w.style.willChange='transform'}}},{passive:true});
   vc.addEventListener('touchmove',e=>{
-    if(e.touches.length===2&&d0){e.preventDefault();k=Math.max(1/zoom,Math.min(5/zoom,dist(e.touches)/d0));
-      const w=$('#vw');if(w){w.style.transformOrigin='0 0';w.style.transform=`scale(${k})`}}
+    if(e.touches.length===2&&d0){e.preventDefault();k=Math.max(1/zoom,Math.min(8/zoom,dist(e.touches)/d0));[mx,my]=mid(e.touches);
+      const w=$('#vw');if(w)w.style.transform=`translate(${mx-sx}px,${my-sy}px) scale(${k})`}
   },{passive:false});
-  vc.addEventListener('touchend',e=>{
-    if(d0&&e.touches.length<2){const nz=zoom*k;d0=0;k=1;
-      if(Math.abs(nz-zoom)>.05)setZoomTo(nz);else{const w=$('#vw');if(w)w.style.transform=''}}
-  });
+  const end=e=>{if(d0&&e.touches.length<2){const nz=zoom*k;d0=0;const w=$('#vw');if(w)w.style.willChange='';
+      if(Math.abs(k-1)>.03)applyZoom(nz,mx,my,cx,cy);else if(w)w.style.transform='';k=1}};
+  vc.addEventListener('touchend',end);vc.addEventListener('touchcancel',end);
 }
 function closeViewer(){$('#viewer')?.remove();pdfDoc=null;curUrl&&URL.revokeObjectURL(curUrl);curUrl=null}
 
