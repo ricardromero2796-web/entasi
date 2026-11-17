@@ -301,6 +301,8 @@ async function saveCert(pid){
   const r=await guard(async()=>ok(await sb.from('certifications').insert({project_id:pid,month:m+'-01',amount:a,note:$('#c_n').value.trim()}).select().single()));
   busy(false);if(!r)return;(P(pid).certs=P(pid).certs||[]).push(r);saveCache();closeSheet();render()}
 function delCert(pid,id){ask('Eliminar aquesta certificació?',async()=>{
+  const r=await guard(async()=>{ok(await sb.from('certifications').delete().eq('id',id));return true});
+  if(!r)return;P(pid).certs=P(pid).certs.filter(c=>c.id!==id);saveCache();render()})}
 
 /* ---------- reunions ---------- */
 function meetingForm(pid,m){
@@ -327,8 +329,6 @@ async function saveMeeting(pid,id){
 function delMeeting(pid,id){ask('Eliminar aquesta reunió?',async()=>{
   const r=await guard(async()=>{ok(await sb.from('meetings').delete().eq('id',id));return true});
   if(!r)return;P(pid).meetings=P(pid).meetings.filter(m=>m.id!==id);saveCache();render()})}
-  const r=await guard(async()=>{ok(await sb.from('certifications').delete().eq('id',id));return true});
-  if(!r)return;P(pid).certs=P(pid).certs.filter(c=>c.id!==id);saveCache();render()})}
 
 /* ---------- tasques ---------- */
 function newTask(pid){sheet(`<h3>Nova tasca</h3><label>QUÈ HAS DE FER?</label><textarea id="t_text" rows="3" placeholder="Revisar armat del mur"></textarea>
