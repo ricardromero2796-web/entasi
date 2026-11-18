@@ -128,6 +128,7 @@ function project(){
     const ts=[...p.tasks].sort((a,b)=>a.done-b.done||order[a.prio]-order[b.prio]);
     body=(ts.length?ts.map(t=>`<div class="task ${t.done?'done':''}"><button class="chk" onclick="toggleTask('${p.id}','${t.id}')" aria-label="Marcar feta">${t.done?ic('check'):''}</button>
       <div class="t">${esc(t.text)}<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap">${t.prio==='alta'?'<span class="pill red">Alta</span>':t.prio==='mitja'?'<span class="pill">Mitja</span>':'<span class="pill">Baixa</span>'}${t.due?`<span class="pill ${t.due<today()&&!t.done?'red':''}">${ic('calendar')} ${fmt(t.due)}</span>`:''}</div></div>
+      <button class="del" onclick="editTask('${p.id}','${t.id}')" aria-label="Editar">${ic('edit')}</button>
       <button class="del" onclick="delTask('${p.id}','${t.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap tasca pendent. Bon senyal.</div>`)
       +`<button class="fab" onclick="newTask('${p.id}')">${ic('plus')} Nova tasca</button>`;
   }else if(tab==='plans'){
@@ -136,6 +137,7 @@ function project(){
       <div class="planrow"><button class="plan" onclick="openPlan('${x.id}')"><div class="ico">${ic((x.type||'').includes('pdf')?'file-type-pdf':'photo')}</div>
       <div style="flex:1;min-width:0"><div style="word-break:break-word">${esc(x.name)}</div><div class="mu">${esc(x.version||'')}${x.version?' · ':''}${fmt((x.created_at||'').slice(0,10))}${c2?' · <span class="ok">offline</span>':''}</div></div></button>
       ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}
+      <button class="sm" onclick="editPlan('${p.id}','${x.id}')" aria-label="Editar">${ic('edit')}</button>
       <button class="sm" onclick="delPlan('${p.id}','${x.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
   }else if(tab==='scopes'){
@@ -331,14 +333,21 @@ function delMeeting(pid,id){ask('Eliminar aquesta reunió?',async()=>{
   if(!r)return;P(pid).meetings=P(pid).meetings.filter(m=>m.id!==id);saveCache();render()})}
 
 /* ---------- tasques ---------- */
-function newTask(pid){sheet(`<h3>Nova tasca</h3><label>QUÈ HAS DE FER?</label><textarea id="t_text" rows="3" placeholder="Revisar armat del mur"></textarea>
-  <label>PRIORITAT</label><select id="t_prio"><option value="alta">Alta</option><option value="mitja" selected>Mitja</option><option value="baixa">Baixa</option></select>
-  <label>DATA LÍMIT (opcional)</label><input id="t_due" type="date">
-  <button class="btn" onclick="saveTask('${pid}')">Afegir tasca</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
-async function saveTask(pid){const text=$('#t_text').value.trim();if(!text){toast('Escriu la tasca');return}
+function taskForm(pid,t){
+  t=t||{text:'',prio:'mitja',due:''};
+  return`<h3>${t.id?'Editar tasca':'Nova tasca'}</h3><label>QUÈ HAS DE FER?</label><textarea id="t_text" rows="3" placeholder="Revisar armat del mur">${esc(t.text)}</textarea>
+  <label>PRIORITAT</label><select id="t_prio">${[['alta','Alta'],['mitja','Mitja'],['baixa','Baixa']].map(([v,l])=>`<option value="${v}" ${t.prio===v?'selected':''}>${l}</option>`).join('')}</select>
+  <label>DATA LÍMIT (opcional)</label><input id="t_due" type="date" value="${esc(t.due||'')}">
+  <button class="btn" onclick="saveTask('${pid}','${t.id||''}')">${t.id?'Desar':'Afegir tasca'}</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`}
+const newTask=pid=>sheet(taskForm(pid));
+const editTask=(pid,id)=>sheet(taskForm(pid,P(pid).tasks.find(t=>t.id===id)));
+async function saveTask(pid,id){const text=$('#t_text').value.trim();if(!text){toast('Escriu la tasca');return}
+  const row={text,prio:$('#t_prio').value,due:$('#t_due').value||null};
   busy(true,'Desant…');
-  const r=await guard(async()=>ok(await sb.from('tasks').insert({project_id:pid,text,prio:$('#t_prio').value,due:$('#t_due').value||null}).select().single()));
-  busy(false);if(!r)return;P(pid).tasks.push(r);saveCache();closeSheet();render()}
+  const r=await guard(async()=>id?ok(await sb.from('tasks').update(row).eq('id',id).select().single()):ok(await sb.from('tasks').insert({...row,project_id:pid}).select().single()));
+  busy(false);if(!r)return;
+  if(id)Object.assign(P(pid).tasks.find(t=>t.id===id),r);else P(pid).tasks.push(r);
+  saveCache();closeSheet();render()}
 async function toggleTask(pid,id){const t=P(pid).tasks.find(t=>t.id===id),v=!t.done;t.done=v;render();
   const r=await guard(async()=>ok(await sb.from('tasks').update({done:v}).eq('id',id).select().single()));
   if(!r){t.done=!v;render()}else saveCache()}
@@ -363,6 +372,17 @@ async function savePlan(pid){
   busy(false);if(!r)return;
   try{await fput(id,f);cached.add(id)}catch(e){}
   P(pid).plans.push(r);saveCache();closeSheet();render();toast('Plànol pujat i desat per veure sense cobertura')}
+const PCATS=['Traçat i planta','Drenatge','Estructures','Serveis afectats','Senyalització','Detalls','Altres'];
+function editPlan(pid,id){const x=P(pid).plans.find(p=>p.id===id),cats=PCATS.includes(x.cat)?PCATS:[...PCATS,x.cat];
+  sheet(`<h3>Editar plànol</h3>
+  <label>NOM</label><input id="e_name" value="${esc(x.name)}">
+  <label>CATEGORIA</label><select id="e_cat">${cats.map(c=>`<option ${x.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+  <label>VERSIÓ</label><input id="e_ver" value="${esc(x.version||'')}" placeholder="Rev. B">
+  <button class="btn" onclick="updatePlan('${pid}','${id}')">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+async function updatePlan(pid,id){const name=$('#e_name').value.trim();if(!name){toast('Posa un nom');return}
+  const row={name,cat:$('#e_cat').value,version:$('#e_ver').value.trim()};busy(true,'Desant…');
+  const r=await guard(async()=>ok(await sb.from('plans').update(row).eq('id',id).select().single()));
+  busy(false);if(!r)return;Object.assign(P(pid).plans.find(p=>p.id===id),r);saveCache();closeSheet();render()}
 function delPlan(pid,id){ask('Eliminar aquest plànol?',async()=>{
   const x=P(pid).plans.find(p=>p.id===id);
   const r=await guard(async()=>{ok(await sb.storage.from('plans').remove([x.path]));ok(await sb.from('plans').delete().eq('id',id));return true});
