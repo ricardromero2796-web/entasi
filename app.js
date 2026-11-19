@@ -107,21 +107,45 @@ function home(){
     <div class="sub">${new Date().toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long'})}${offline?` · <span style="color:var(--red)">${ic('wifi')} sense connexió</span>`:''}</div>
     <div class="stats"><div class="stat"><b>${projects.length}</b><span>Obres</span></div><div class="stat"><b>${all.length}</b><span>Tasques pendents</span></div><div class="stat"><b style="color:var(--lime)">${urgent}</b><span>Urgents</span></div></div>
   </div>
-  <div class="sec"><h2>Les meves obres</h2>${projects.length>1?`<button class="pill" style="font-size:12px;padding:6px 14px" onclick="ordering=!ordering;render()">${ordering?'Fet':'Ordenar'}</button>`:''}</div>
-  ${projects.length?sortedProjects().map((p,i,arr)=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);return`
-  <${ordering?'div':'button'} class="card" ${ordering?'':`onclick="go({name:'project',id:'${p.id}'},'tasks')"`}>
+  <div class="subs" style="margin:16px 0 4px">${[['gran','Obres grans'],['petita','Obres petites']].map(([k,l])=>`<button class="${curSect()===k?'on':''}" onclick="setSect('${k}')">${l} · ${projects.filter(q=>(q.kind||'gran')===k).length}</button>`).join('')}</div>
+  <div class="sec"><h2>${curSect()==='gran'?'Obres grans':'Obres petites FGC'}</h2>${sortedProjects().length>1?`<button class="pill" style="font-size:12px;padding:6px 14px" onclick="ordering=!ordering;render()">${ordering?'Fet':'Ordenar'}</button>`:''}</div>
+  ${sortedProjects().length?sortedProjects().map((p,i,arr)=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);
+  if(isSmall(p))return`
+  <${ordering?'div':'button'} class="card" data-pid="${p.id}" ${ordering?'':`onclick="go({name:'project',id:'${p.id}'},'tasks')"`}>
+    <div class="row"><span class="ttl" style="margin:0">${p.pinned?ic('pin')+' ':''}${esc(p.name)}</span>${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}</div>
+    <div class="row mu" style="margin-top:8px"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span></div>
+    ${ordering?octl(p,i,arr):''}
+  </${ordering?'div':'button'}>`;
+  return`
+  <${ordering?'div':'button'} class="card" data-pid="${p.id}" ${ordering?'':`onclick="go({name:'project',id:'${p.id}'},'tasks')"`}>
     <div class="row"><span class="code">${p.pinned?ic('pin')+' ':''}${esc(p.code)}</span><span style="display:flex;gap:6px">${s.late?'<span class="pill red">Endarrerida</span>':''}${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}${!s.late&&!u?`<span class="pill lime">${esc(p.status)}</span>`:''}</span></div>
     <div class="ttl">${esc(p.name)}</div><div class="mu">${esc(p.client)}</div>
     ${s.bud>0?`<div class="row" style="margin-top:14px;align-items:flex-end"><div><div class="mu" style="font-size:11px;letter-spacing:.08em">CERTIFICAT</div><div style="font-size:17px">${eur(s.cert)}</div></div><div style="text-align:right"><div class="mu" style="font-size:11px;letter-spacing:.08em">ADJUDICAT</div><div style="font-size:17px">${eur(s.bud)}</div></div></div>`:''}
     <div class="bar"><i style="width:${Math.min(100,s.exec||0)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
     <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${s.exec!==null?Math.round(s.exec)+'% executat':'Sense pressupost'}</span></div>
-    ${ordering?`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',-1)" aria-label="Pujar">${ic('arrow-up')}</button><button class="sm" ${i===arr.length-1||!!arr[i+1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',1)" aria-label="Baixar">${ic('arrow-down')}</button><button class="sm ${p.pinned?'on':''}" onclick="togglePin('${p.id}')" aria-label="Fixar a dalt">${ic('pin')}</button></div>`:''}
-  </${ordering?'div':'button'}>`}).join(''):`<div class="empty">Encara no tens cap obra.<br>Afegeix la primera amb el botó de sota.</div>`}
-  <button class="fab" onclick="newProject()">${ic('plus')} Nova obra</button>`;
+    ${ordering?octl(p,i,arr):''}
+  </${ordering?'div':'button'}>`}).join(''):`<div class="empty">${curSect()==='gran'?'Encara no tens cap obra gran.':'Encara no tens cap obra petita.'}<br>Afegeix-ne una amb el botó de sota.</div>`}
+  <div class="mu" style="text-align:center;font-size:12px;margin:14px 0 0">Mantén premuda una obra per editar-la o esborrar-la</div>
+  <button class="fab" onclick="newProject()">${ic('plus')} ${curSect()==='gran'?'Nova obra':'Nova obra petita'}</button>`;
 }
+const octl=(p,i,arr)=>`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',-1)" aria-label="Pujar">${ic('arrow-up')}</button><button class="sm" ${i===arr.length-1||!!arr[i+1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',1)" aria-label="Baixar">${ic('arrow-down')}</button><button class="sm ${p.pinned?'on':''}" onclick="togglePin('${p.id}')" aria-label="Fixar a dalt">${ic('pin')}</button></div>`;
+const isSmall=p=>p.kind==='petita';
+const curSect=()=>pref.sect==='petita'?'petita':'gran';
+const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
+/* mantenir premut sobre una obra: editar o esborrar */
+(()=>{let t=null,sx=0,sy=0,fired=false;
+  const cancel=()=>{clearTimeout(t);t=null};
+  const menu=id=>{const p=P(id);if(!p)return;fired=true;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
+  document.addEventListener('pointerdown',e=>{fired=false;const c=e.target.closest&&e.target.closest('.card[data-pid]');if(!c||ordering||e.button>0)return;sx=e.clientX;sy=e.clientY;fired=false;cancel();t=setTimeout(()=>menu(c.dataset.pid),550)});
+  document.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)cancel()});
+  ['pointerup','pointercancel','scroll'].forEach(n=>document.addEventListener(n,cancel,true));
+  document.addEventListener('contextmenu',e=>{const c=e.target.closest&&e.target.closest('.card[data-pid]');if(c){e.preventDefault();if(!ordering&&!fired)menu(c.dataset.pid)}});
+  document.addEventListener('click',e=>{if(fired){fired=false;if(e.target.closest&&e.target.closest('.card[data-pid]')){e.stopPropagation();e.preventDefault()}}},true);
+})();
 
 function project(){
   const p=P(view.id);if(!p)return go({name:'home'});
+  const small=isSmall(p);if(small&&tab!=='tasks'&&tab!=='plans')tab='tasks';
   const n=pending(p);let body='';
   if(tab==='tasks'){
     const order={alta:0,mitja:1,baixa:2};
@@ -170,8 +194,8 @@ function project(){
   <div class="hdr" style="padding-bottom:22px">
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
-    <div class="code" style="margin-top:18px">${esc(p.code)}</div><div style="font-size:24px;margin:4px 0">${esc(p.name)}</div><div class="sub">${esc(p.client)} · ${n.length} tasques pendents</div></div>
-  <div class="tabs">${[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']].map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
+    ${small?'':`<div class="code" style="margin-top:18px">${esc(p.code)}</div>`}<div style="font-size:24px;margin:${small?'18px':'4px'} 0 4px">${esc(p.name)}</div><div class="sub">${small?'':esc(p.client)+' · '}${n.length} tasques pendents</div></div>
+  <div class="tabs">${(small?[['tasks','Tasques'],['plans','Plànols']]:[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
   <div style="margin-top:14px">${body}</div>`;
 }
 
@@ -184,7 +208,10 @@ function busy(on,txt){const b=$('#sheet .btn:not(.ghost)');if(b){b.disabled=on;i
 
 /* ---------- obres ---------- */
 function projectForm(p){
-  p=p||{code:'',name:'',client:'',address:'',status:'En curs',budget:'',start_date:'',end_date:''};
+  p=p||{code:'',name:'',client:'',address:'',status:'En curs',budget:'',start_date:'',end_date:'',kind:curSect()};
+  if(isSmall(p))return`<h3>${p.id?'Editar obra petita':'Nova obra petita'}</h3>
+  <label>NOM</label><input id="f_name" value="${esc(p.name)}" placeholder="Compensacions, Atirantats, Catenària rígida…">
+  <button class="btn" onclick="saveProject('${p.id||''}')">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`;
   return`<h3>${p.id?'Editar obra':'Nova obra'}</h3>
   <label>CODI</label><input id="f_code" value="${esc(p.code)}" placeholder="P080">
   <label>NOM DE L'OBRA</label><input id="f_name" value="${esc(p.name)}" placeholder="Urbanització carrer Major">
@@ -199,7 +226,8 @@ const newProject=()=>sheet(projectForm());
 const editProject=id=>sheet(projectForm(P(id)));
 async function saveProject(id){
   const name=$('#f_name').value.trim();if(!name){toast('Posa un nom a l\'obra');return}
-  const d={code:$('#f_code').value.trim()||'P---',name,client:$('#f_client').value.trim(),address:$('#f_addr').value.trim(),status:$('#f_status').value,budget:Math.max(0,parseFloat($('#f_budget').value)||0),start_date:$('#f_start').value||null,end_date:$('#f_end').value||null};
+  const small=id?isSmall(P(id)):curSect()==='petita';
+  const d=small?(id?{name}:{name,kind:'petita',code:'',status:''}):{code:$('#f_code').value.trim()||'P---',name,client:$('#f_client').value.trim(),address:$('#f_addr').value.trim(),status:$('#f_status').value,budget:Math.max(0,parseFloat($('#f_budget').value)||0),start_date:$('#f_start').value||null,end_date:$('#f_end').value||null,...(id?{}:{kind:'gran'})};
   busy(true,'Desant…');
   const r=await guard(async()=>id?ok(await sb.from('projects').update(d).eq('id',id).select().single()):ok(await sb.from('projects').insert(d).select().single()));
   busy(false);if(!r)return;
@@ -217,7 +245,7 @@ IC.pin='<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 
 IC['arrow-up']='<path d="M12 19V5M5 12l7-7 7 7"/>';
 IC['arrow-down']='<path d="M12 5v14M19 12l-7 7-7-7"/>';
 let ordering=false;
-const sortedProjects=()=>[...projects].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.position||0)-(b.position||0)||(a.created_at<b.created_at?1:-1));
+const sortedProjects=()=>projects.filter(p=>(p.kind||'gran')===curSect()).sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(a.position||0)-(b.position||0)||(a.created_at<b.created_at?1:-1));
 async function moveProject(id,dir){
   const list=sortedProjects(),i=list.findIndex(p=>p.id===id),j=i+dir;
   if(j<0||j>=list.length||!!list[j].pinned!==!!list[i].pinned)return;
