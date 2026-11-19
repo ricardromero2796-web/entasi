@@ -200,7 +200,17 @@ function project(){
 }
 
 /* ---------- fulls modals ---------- */
-function sheet(html){closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';d.innerHTML=`<div>${html}</div>`;d.addEventListener('click',e=>{if(e.target===d)closeSheet()});document.body.appendChild(d);d.querySelector('input,textarea')?.focus()}
+function sheet(html){closeSheet();const d=document.createElement('div');d.className='sheet';d.id='sheet';d.innerHTML=`<div><span class="grab"></span>${html}</div>`;d.addEventListener('click',e=>{if(e.target===d)closeSheet()});document.body.appendChild(d);dragClose(d);
+  d.querySelector('input:not([type=date]):not([type=time]):not([type=month]):not([type=file]),textarea')?.focus()}
+/* tancar el full lliscant el dit cap avall (com a les apps) */
+function dragClose(d){const p=d.firstElementChild;let y0=0,dy=0,on=false,t0=0;
+  p.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;y0=e.touches[0].clientY;dy=0;on=false;t0=Date.now();p.style.transition='none'},{passive:true});
+  p.addEventListener('touchmove',e=>{if(e.touches.length!==1)return;const y=e.touches[0].clientY;
+    if(!on){if(y-y0>8&&p.scrollTop<=0){on=true;y0=y;t0=Date.now()}else{if(p.scrollTop>0)y0=y;return}}
+    dy=Math.max(0,y-y0);e.preventDefault();p.style.transform=`translateY(${dy}px)`;d.style.background=`rgba(0,0,0,${.55*(1-Math.min(1,dy/500))})`},{passive:false});
+  const end=()=>{if(!on)return;on=false;const fast=dy/Math.max(1,Date.now()-t0)>.5;p.style.transition='transform .22s ease';
+    if(dy>110||(fast&&dy>35)){p.style.transform='translateY(100%)';d.style.background='rgba(0,0,0,0)';setTimeout(closeSheet,200)}else{p.style.transform='';d.style.background=''}};
+  p.addEventListener('touchend',end);p.addEventListener('touchcancel',end)}
 function closeSheet(){$('#sheet')?.remove()}
 function toast(m){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
 function ask(msg,fn){sheet(`<h3>${msg}</h3><button class="btn" style="background:var(--redbg);color:var(--red)" id="ok">Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);$('#ok').onclick=()=>{closeSheet();fn()}}
@@ -512,23 +522,48 @@ function openSettings(){const n=pref.notif,cs=pref.style||'default';sheet(`<h3>A
   <label>MODE</label><div class="subs mode" style="margin:0 0 6px"><button data-m="dark" class="${pref.theme==='dark'?'on':''}" onclick="setMode('dark')">${ic('moon')} Fosc</button><button data-m="light" class="${pref.theme==='light'?'on':''}" onclick="setMode('light')">${ic('sun')} Clar</button></div>
   <label style="margin-top:22px">AVÍS DIARI DE TASQUES</label>
   <div class="row"><span>Rebre resum cada matí</span><button class="sw ${n.on?'on':''}" id="sw" onclick="toggleNotif()" aria-label="Activar avisos"><i></i></button></div>
-  <label>HORA DE L'AVÍS</label><input type="time" id="n_time" value="${n.time}" onchange="pref.notif.time=this.value;savePref()">
+  <label>HORA DE L'AVÍS</label><input type="time" id="n_time" value="${n.time}" onchange="setNotifTime(this.value)">
   <button class="btn ghost" onclick="notify()">${ic('bell-ringing')} Provar avís ara</button>
-  <p class="note">De moment l'avís surt quan l'app és oberta o en segon pla. Per rebre'l amb el mòbil bloquejat falta activar les notificacions push, que és el pas següent.</p>
+  <p class="note">Reps un resum de les tasques pendents de cada obra a l'hora triada, encara que el mòbil estigui bloquejat. Cal tenir l'app instal·lada a la pantalla d'inici.</p>
   <label>COMPTE</label><div class="mu" style="margin-bottom:4px">${esc(user?.email||'')}</div>
   <button class="btn ghost" onclick="logout()">${ic('logout')} Tancar sessió</button>
   <button class="btn" onclick="closeSheet()">Tancar</button>`)}
+/* ---------- notificacions push (arriben amb el mòbil bloquejat) ---------- */
+const VAPID='BPSrjDFs0h66ZskARjV1L1fKvo0bI8d7ESuIfScwVYJFjS8ztXTU4XBPxDr3PdwbYvd6b2oM1qmsn67l3EUalSI';
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const b64u2u8=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(s+'='.repeat((4-s.length%4)%4)),c=>c.charCodeAt(0))};
+async function curSub(){const reg=await navigator.serviceWorker.ready;return reg.pushManager.getSubscription()}
+async function pushSub(){
+  const reg=await navigator.serviceWorker.ready;let s=await reg.pushManager.getSubscription();
+  if(!s)s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u2u8(VAPID)});
+  const j=s.toJSON();
+  ok(await sb.from('push_subs').upsert({endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,notify_time:pref.notif.time,enabled:true,last_sent:null,owner:user.id},{onConflict:'endpoint'}));
+}
 async function toggleNotif(){
-  if(!pref.notif.on){if(!('Notification' in window)){toast('Aquest navegador no admet avisos');return}
+  const n=pref.notif;
+  if(!n.on){
+    if(!pushOK()){toast("Cal tenir l'app instal·lada a la pantalla d'inici");return}
     let r='denied';try{r=await Notification.requestPermission()}catch(e){}
-    if(r!=='granted'){toast('Cal permetre les notificacions');return}}
-  pref.notif.on=!pref.notif.on;savePref();$('#sw').classList.toggle('on',pref.notif.on)}
-function summary(){const l=[];projects.forEach(p=>{const n=pending(p);if(n.length)l.push(`${p.code}: ${n.length} pendents${n.some(t=>t.prio==='alta')?' (hi ha urgents)':''}`)});return l.length?l.join(' · '):'Cap tasca pendent avui.'}
+    if(r!=='granted'){toast('Cal permetre les notificacions');return}
+    const g=await guard(async()=>{await pushSub();return true});if(!g)return;
+    n.on=true;
+  }else{
+    n.on=false;
+    await guard(async()=>{const s=await curSub();if(s)ok(await sb.from('push_subs').update({enabled:false}).eq('endpoint',s.endpoint));return true});
+  }
+  savePref();$('#sw')?.classList.toggle('on',n.on);
+}
+async function setNotifTime(v){
+  if(!v)return;pref.notif.time=v;savePref();if(!pref.notif.on)return;
+  await guard(async()=>{const s=await curSub();if(s)ok(await sb.from('push_subs').update({notify_time:v,last_sent:null}).eq('endpoint',s.endpoint));return true});
+}
 async function notify(){
-  if(!('Notification' in window)||Notification.permission!=='granted'){toast('Permet primer les notificacions');return}
-  const o={body:summary(),icon:'icon-192.png',tag:'entasi-mati'};
-  try{const reg=await navigator.serviceWorker?.getRegistration();reg?await reg.showNotification("Tasques d'avui · ENTASI",o):new Notification("Tasques d'avui · ENTASI",o)}catch(e){toast(summary())}}
-setInterval(()=>{const n=pref.notif;if(!n.on||!user)return;const d=new Date(),hm=d.toTimeString().slice(0,5);if(hm>=n.time&&n.last!==today()){n.last=today();savePref();notify()}},30000);
+  if(!pref.notif.on){toast("Activa primer l'avís diari");return}
+  toast('Enviant…');
+  const r=await guard(async()=>{const {data,error}=await sb.functions.invoke('send-push',{body:{test:true}});if(error)throw error;return data||{}});
+  if(!r)return;
+  toast(r.sent?'Avís enviat: mira les notificacions':(r.errors&&r.errors.length?"No s'ha pogut enviar: "+r.errors[0]:'Cap dispositiu subscrit. Torna a activar l\'avís.'));
+}
 
 /* ---------- inici ---------- */
 async function start(){try{cached=new Set(await fkeys())}catch(e){}render();await refresh()}

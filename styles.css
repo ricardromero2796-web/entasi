@@ -137,3 +137,5 @@ textarea{resize:none;font-family:inherit}
 .stl i{display:block;height:44px;border-radius:10px;margin-bottom:8px}
 .stl b{display:block;font-weight:400;font-size:14px}
 .stl span{display:block;font-size:11px;color:var(--mu);margin-top:2px}
+.grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--bd);margin:-10px auto 16px}
+.sheet>div{overscroll-behavior:contain;touch-action:pan-y}
