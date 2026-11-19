@@ -526,8 +526,22 @@ function openSettings(){const n=pref.notif,cs=pref.style||'default';sheet(`<h3>A
   <button class="btn ghost" onclick="notify()">${ic('bell-ringing')} Provar avís ara</button>
   <p class="note">Reps un resum de les tasques pendents de cada obra a l'hora triada, encara que el mòbil estigui bloquejat. Cal tenir l'app instal·lada a la pantalla d'inici.</p>
   <label>COMPTE</label><div class="mu" style="margin-bottom:4px">${esc(user?.email||'')}</div>
+  <button class="btn ghost" onclick="pwForm()">${ic('key')} Canviar contrasenya</button>
   <button class="btn ghost" onclick="logout()">${ic('logout')} Tancar sessió</button>
   <button class="btn" onclick="closeSheet()">Tancar</button>`)}
+IC.key='<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3m-3 3 3 3m-6-0 2 2"/>';
+function pwForm(){sheet(`<h3>Canviar contrasenya</h3>
+  <label style="margin-top:0">NOVA CONTRASENYA</label><input type="password" id="pw1" autocomplete="new-password" placeholder="Mínim 8 caràcters">
+  <label>REPETEIX-LA</label><input type="password" id="pw2" autocomplete="new-password">
+  <button class="btn" onclick="savePw()">Desar contrasenya</button>
+  <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+async function savePw(){
+  const a=document.getElementById('pw1').value,b=document.getElementById('pw2').value;
+  if(a.length<8){toast('Ha de tenir almenys 8 caràcters');return}
+  if(a!==b){toast('Les dues contrasenyes no coincideixen');return}
+  const r=await guard(async()=>{const {error}=await sb.auth.updateUser({password:a});if(error)throw error;return true});
+  if(r){closeSheet();toast('Contrasenya canviada')}
+}
 /* ---------- notificacions push (arriben amb el mòbil bloquejat) ---------- */
 const VAPID='BPSrjDFs0h66ZskARjV1L1fKvo0bI8d7ESuIfScwVYJFjS8ztXTU4XBPxDr3PdwbYvd6b2oM1qmsn67l3EUalSI';
 const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
