@@ -57,7 +57,7 @@ async function fdel(k){const db=await DB;return new Promise(res=>{const t=db.tra
 async function fkeys(){const db=await DB;return new Promise(res=>{const r=db.transaction('f').objectStore('f').getAllKeys();r.onsuccess=()=>res(r.result);r.onerror=()=>res([])})}
 
 /* ---------- tema ---------- */
-function applyTheme(){document.documentElement.dataset.theme=pref.theme;const m=document.querySelector('meta[name=theme-color]');if(m)m.content=pref.theme==='dark'?'#0E1518':'#F2F6F5'}
+function applyTheme(){document.documentElement.dataset.theme=pref.theme;document.documentElement.dataset.style=pref.style||'default';const m=document.querySelector('meta[name=theme-color]');if(m)m.content=pref.theme==='dark'?'#0E1518':'#F2F6F5'}
 function toggleTheme(){pref.theme=pref.theme==='dark'?'light':'dark';savePref();applyTheme();render()}
 
 /* ---------- accés ---------- */
@@ -101,7 +101,7 @@ function home(){
   $('#app').innerHTML=`
   <div class="hdr">
     <div class="top">${LOGO}
-      <div style="display:flex;gap:8px"><button class="ibtn" onclick="openSettings()" aria-label="Avisos i compte">${ic('bell')}</button>
+      <div style="display:flex;gap:8px"><button class="ibtn" onclick="openSettings()" aria-label="Ajustos">${ic('settings')}</button>
       <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div></div>
     <div class="hi">${greet}</div>
     <div class="sub">${new Date().toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long'})}${offline?` · <span style="color:var(--red)">${ic('wifi')} sense connexió</span>`:''}</div>
@@ -501,8 +501,16 @@ function pinchSetup(vc){
 }
 function closeViewer(){$('#viewer')?.remove();pdfDoc=null;curUrl&&URL.revokeObjectURL(curUrl);curUrl=null}
 
+const STYLES=[['default','Per defecte','Fosc, turquesa i llima','linear-gradient(135deg,#00A0B0,#A3CB3C)'],['entasi','ENTASI verd','Degradat de la marca','linear-gradient(135deg,#00A0B0,#4DB88A 55%,#A3CB3C)'],['midnight','Mitjanit','Blau nit i violeta','linear-gradient(135deg,#5B8CFF,#B06BFF)'],['obra','Obra','Carbó i groc de seguretat','repeating-linear-gradient(135deg,#FFB400 0 10px,#1C1C1C 10px 20px)'],['minimal','Minimal','Pla, net i sobri','linear-gradient(90deg,#1D1D1D 50%,#00A0B0 50%)'],['glass','Cristall','Vidre sobre colors','linear-gradient(135deg,rgba(0,160,176,.85),rgba(120,80,255,.75),rgba(163,203,60,.85))']];
+IC.settings='<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>';
+function setStyle(k){pref.style=k;savePref();applyTheme();document.querySelectorAll('.stl').forEach(b=>b.classList.toggle('on',b.dataset.k===k));render()}
+function setMode(m){pref.theme=m;savePref();applyTheme();document.querySelectorAll('.mode button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));render()}
 /* ---------- compte i avisos del matí ---------- */
-function openSettings(){const n=pref.notif;sheet(`<h3>Avís diari de tasques</h3>
+function openSettings(){const n=pref.notif,cs=pref.style||'default';sheet(`<h3>Ajustos</h3>
+  <label style="margin-top:0">APARENÇA</label>
+  <div class="styles">${STYLES.map(([k,t,d,g])=>`<button class="stl ${cs===k?'on':''}" data-k="${k}" onclick="setStyle('${k}')"><i style="background:${g}"></i><b>${t}</b><span>${d}</span></button>`).join('')}</div>
+  <label>MODE</label><div class="subs mode" style="margin:0 0 6px"><button data-m="dark" class="${pref.theme==='dark'?'on':''}" onclick="setMode('dark')">${ic('moon')} Fosc</button><button data-m="light" class="${pref.theme==='light'?'on':''}" onclick="setMode('light')">${ic('sun')} Clar</button></div>
+  <label style="margin-top:22px">AVÍS DIARI DE TASQUES</label>
   <div class="row"><span>Rebre resum cada matí</span><button class="sw ${n.on?'on':''}" id="sw" onclick="toggleNotif()" aria-label="Activar avisos"><i></i></button></div>
   <label>HORA DE L'AVÍS</label><input type="time" id="n_time" value="${n.time}" onchange="pref.notif.time=this.value;savePref()">
   <button class="btn ghost" onclick="notify()">${ic('bell-ringing')} Provar avís ara</button>
