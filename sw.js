@@ -1,6 +1,6 @@
 // Service worker d'ENTASI: guarda l'app perquè s'obri sense cobertura.
 // Només toca fitxers del mateix lloc; mai les peticions a Supabase.
-const C='entasi-v12';
+const C='entasi-v13';
 const SHELL=['./','index.html','styles.css','app.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','vendor/supabase.min.js','vendor/pdf.min.js','vendor/pdf.worker.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});

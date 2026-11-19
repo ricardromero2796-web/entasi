@@ -99,8 +99,8 @@ html,body{max-width:100%;overflow-x:hidden}
 #app,.sheet>div{max-width:100%;overflow-x:hidden}
 .sheet>div{overflow-y:auto}
 input,select,textarea{min-width:0;max-width:100%;display:block}
-input[type=date]{-webkit-appearance:none;appearance:none;min-height:48px;text-align:left}
-input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0;min-width:0}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-height:48px;text-align:left;width:100%;max-width:100%;min-width:0;box-sizing:border-box;display:block}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;min-width:0}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .dgrid>div{min-width:0}
 .subs{display:flex;gap:8px;margin:2px 0 14px;overflow:hidden}
