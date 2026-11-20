@@ -132,15 +132,17 @@ const octl=(p,i,arr)=>`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].
 const isSmall=p=>p.kind==='petita';
 const curSect=()=>pref.sect==='petita'?'petita':'gran';
 const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
-/* mantenir premut sobre una obra: editar o esborrar */
-(()=>{let t=null,sx=0,sy=0,fired=false;
+/* mantenir premut sobre una obra o un àmbit: editar o esborrar */
+(()=>{let t=null,sx=0,sy=0,fired=false;const SEL='.card[data-pid],.card[data-sid]';
   const cancel=()=>{clearTimeout(t);t=null};
-  const menu=id=>{const p=P(id);if(!p)return;fired=true;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
-  document.addEventListener('pointerdown',e=>{fired=false;const c=e.target.closest&&e.target.closest('.card[data-pid]');if(!c||ordering||e.button>0)return;sx=e.clientX;sy=e.clientY;fired=false;cancel();t=setTimeout(()=>menu(c.dataset.pid),550)});
+  const menu=c=>{fired=true;if(c.dataset.sid){const pid=c.dataset.spid,id=c.dataset.sid,x=(P(pid)?.scopes||[]).find(s=>s.id===id);if(!x)return;
+      sheet(`<h3>${esc(x.name)}</h3><button class="btn" onclick="closeSheet();editScope('${pid}','${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="delScope('${pid}','${id}')">${ic('trash')} Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);return}
+    const id=c.dataset.pid,p=P(id);if(!p)return;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
+  document.addEventListener('pointerdown',e=>{fired=false;const c=e.target.closest&&e.target.closest(SEL);if(!c||ordering||e.button>0)return;sx=e.clientX;sy=e.clientY;fired=false;cancel();t=setTimeout(()=>menu(c),550)});
   document.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)cancel()});
   ['pointerup','pointercancel','scroll'].forEach(n=>document.addEventListener(n,cancel,true));
-  document.addEventListener('contextmenu',e=>{const c=e.target.closest&&e.target.closest('.card[data-pid]');if(c){e.preventDefault();if(!ordering&&!fired)menu(c.dataset.pid)}});
-  document.addEventListener('click',e=>{if(fired){fired=false;if(e.target.closest&&e.target.closest('.card[data-pid]')){e.stopPropagation();e.preventDefault()}}},true);
+  document.addEventListener('contextmenu',e=>{const c=e.target.closest&&e.target.closest(SEL);if(c){e.preventDefault();if(!ordering&&!fired)menu(c)}});
+  document.addEventListener('click',e=>{if(fired){fired=false;if(e.target.closest&&e.target.closest(SEL)){e.stopPropagation();e.preventDefault()}}},true);
 })();
 
 function project(){
@@ -156,8 +158,9 @@ function project(){
       <button class="del" onclick="delTask('${p.id}','${t.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap tasca pendent. Bon senyal.</div>`)
       +`<button class="fab" onclick="newTask('${p.id}')">${ic('plus')} Nova tasca</button>`;
   }else if(tab==='plans'){
-    const pl=[...p.plans].sort((a,b)=>a.created_at<b.created_at?1:-1),cats=[...new Set(pl.map(x=>x.cat))];
-    body=(pl.length?cats.map(c=>`<div class="sec" style="margin-top:14px"><h2>${esc(c)}</h2></div>`+pl.filter(x=>x.cat===c).map(x=>{const c2=cached.has(x.id);return`
+    const ps=pref.psort||'recent',nc=(a,b)=>String(a.name).localeCompare(String(b.name),'ca',{numeric:true,sensitivity:'base'});
+    const pl=[...p.plans].sort(ps==='az'?nc:ps==='za'?(a,b)=>nc(b,a):(a,b)=>a.created_at<b.created_at?1:-1),cats=[...new Set(pl.map(x=>x.cat))];
+    body=(pl.length?`<div class="sec" style="margin-top:0"><h2>${pl.length} plànol${pl.length===1?'':'s'}</h2><button class="pill" style="font-size:12px;padding:6px 14px" onclick="sortPlans()">Ordenar: ${PSORT[ps]}</button></div>`:'')+(pl.length?cats.map(c=>`<div class="sec" style="margin-top:14px"><h2>${esc(c)}</h2></div>`+pl.filter(x=>x.cat===c).map(x=>{const c2=cached.has(x.id);return`
       <div class="planrow"><button class="plan" onclick="openPlan('${x.id}')"><div class="ico">${ic((x.type||'').includes('pdf')?'file-type-pdf':'photo')}</div>
       <div style="flex:1;min-width:0"><div style="word-break:break-word">${esc(x.name)}</div><div class="mu">${esc(x.version||'')}${x.version?' · ':''}${fmt((x.created_at||'').slice(0,10))}${c2?' · <span class="ok">offline</span>':''}</div></div></button>
       ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}
@@ -176,10 +179,10 @@ function project(){
     if(sub==='certs'){
       inner=(s.exec!==null?`<div class="card"><div class="mu" style="font-size:12px;letter-spacing:.1em;margin-bottom:6px">CERTIFICAT</div><div style="font-size:26px">${eur(s.cert)}<span style="font-size:14px" class="mu"> de ${eur(s.bud)}</span></div><div class="bar" style="margin:10px 0 0"><i style="width:${Math.min(100,s.exec)}%"></i></div></div>`
         :`<div class="mu" style="margin:0 4px 12px">Posa el pressupost d'adjudicació a <b>Dades › Editar obra</b> perquè l'app calculi l'avanç.</div>`)
-        +(cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap certificació encara.</div>`)
+        +(cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="editCert('${p.id}','${c.id}')" aria-label="Editar">${ic('edit')}</button><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap certificació encara.</div>`)
         +`<button class="fab" onclick="newCert('${p.id}')">${ic('plus')} Afegir certificació</button>`;
     }else if(sub==='meets'){
-      inner=(ms.length?ms.map(m=>`<button class="card meet" onclick="editMeeting('${p.id}','${m.id}')"><div class="row"><b>${fmt(m.date)} ${m.date.slice(0,4)}</b><span class="mu">${esc(m.title||'')}</span></div>${m.attendees?`<div class="mu" style="margin-top:4px">${ic('users')} ${esc(m.attendees)}</div>`:''}<div class="mnotes">${esc(m.notes||'')}</div></button>`).join(''):`<div class="empty">Cap reunió encara.<br>Apunta aquí les reunions setmanals.</div>`)
+      inner=(ms.length?ms.map(m=>`<button class="card meet" onclick="editMeeting('${p.id}','${m.id}')"><div class="row"><b>${fmt(m.date)} ${m.date.slice(0,4)}</b><span class="mu" style="display:flex;align-items:center;gap:8px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title||'')}</span>${ic('edit')}</span></div>${m.attendees?`<div class="mu" style="margin-top:4px">${ic('users')} ${esc(m.attendees)}</div>`:''}<div class="mnotes">${esc(m.notes||'')}</div></button>`).join(''):`<div class="empty">Cap reunió encara.<br>Apunta aquí les reunions setmanals.</div>`)
         +`<button class="fab" onclick="newMeeting('${p.id}')">${ic('plus')} Nova reunió</button>`;
     }else{
       inner=`<div class="card">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Inici',p.start_date?fmt(p.start_date)+' '+p.start_date.slice(0,4):'—'],['Final del termini',p.end_date?fmt(p.end_date)+' '+p.end_date.slice(0,4):'—']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
@@ -289,7 +292,7 @@ function dev(planned,actual){
 const dfmt=d=>d?fmt(d)+' '+d.slice(0,4):'—';
 function scopeCard(p,x){
   const st=scopeState(x);
-  return`<button class="card" onclick="editScope('${p.id}','${x.id}')">
+  return`<button class="card" data-sid="${x.id}" data-spid="${p.id}" onclick="editScope('${p.id}','${x.id}')">
     <div class="row"><div class="ttl" style="margin:0">${esc(x.name)}</div><span class="pill ${st.c}">${esc(st.t)}</span></div>
     <div class="sgrid">
       <div><div class="lbl">INICI TEÒRIC</div><div>${dfmt(x.planned_start)}</div></div>
@@ -328,18 +331,28 @@ function delScope(pid,id){closeSheet();ask('Eliminar aquest àmbit?',async()=>{
   const r=await guard(async()=>{ok(await sb.from('scopes').delete().eq('id',id));return true});
   if(!r)return;P(pid).scopes=P(pid).scopes.filter(x=>x.id!==id);saveCache();render()})}
 
+/* ---------- ordenar plànols ---------- */
+const PSORT={recent:'Més recents',az:'Nom A–Z',za:'Nom Z–A'};
+function sortPlans(){const c=pref.psort||'recent';sheet(`<h3>Ordenar plànols</h3>${Object.entries(PSORT).map(([k,l])=>`<button class="btn ${c===k?'':'ghost'}" onclick="setPSort('${k}')">${l}</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Tancar</button>`)}
+function setPSort(k){pref.psort=k;savePref();closeSheet();render()}
 /* ---------- certificacions ---------- */
-function newCert(pid){sheet(`<h3>Nova certificació</h3>
-  <label>MES</label><input id="c_m" type="month" value="${today().slice(0,7)}">
-  <label>IMPORT CERTIFICAT AQUEST MES (€, NO L'ACUMULAT)</label><input id="c_a" type="number" inputmode="decimal" min="0" step="0.01" placeholder="45000">
-  <label>NOTA (opcional)</label><input id="c_n" placeholder="Certificació núm. 3">
-  <button class="btn" onclick="saveCert('${pid}')">Afegir</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
-async function saveCert(pid){
+const newCert=pid=>certForm(pid);
+const editCert=(pid,id)=>certForm(pid,P(pid).certs.find(c=>c.id===id));
+function certForm(pid,c){c=c||{month:today().slice(0,7),amount:'',note:''};sheet(`<h3>${c.id?'Editar certificació':'Nova certificació'}</h3>
+  <label>MES</label><input id="c_m" type="month" value="${esc(String(c.month).slice(0,7))}">
+  <label>IMPORT CERTIFICAT AQUEST MES (€, NO L'ACUMULAT)</label><input id="c_a" type="number" inputmode="decimal" min="0" step="0.01" placeholder="45000" value="${esc(c.amount)}">
+  <label>NOTA (opcional)</label><input id="c_n" value="${esc(c.note||'')}" placeholder="Certificació núm. 3">
+  <button class="btn" onclick="saveCert('${pid}','${c.id||''}')">${c.id?'Desar':'Afegir'}</button>
+  ${c.id?`<button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delCert('${pid}','${c.id}')">${ic('trash')} Eliminar certificació</button>`:''}<button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+async function saveCert(pid,id){
   const m=$('#c_m').value,a=parseFloat($('#c_a').value);
   if(!m){toast('Tria el mes');return}if(isNaN(a)||a<0){toast('Escriu l\'import');return}
   busy(true,'Desant…');
-  const r=await guard(async()=>ok(await sb.from('certifications').insert({project_id:pid,month:m+'-01',amount:a,note:$('#c_n').value.trim()}).select().single()));
-  busy(false);if(!r)return;(P(pid).certs=P(pid).certs||[]).push(r);saveCache();closeSheet();render()}
+  const row={month:m+'-01',amount:a,note:$('#c_n').value.trim()};
+  const r=await guard(async()=>id?ok(await sb.from('certifications').update(row).eq('id',id).select().single()):ok(await sb.from('certifications').insert({...row,project_id:pid}).select().single()));
+  busy(false);if(!r)return;const p=P(pid);p.certs=p.certs||[];
+  if(id)Object.assign(p.certs.find(c=>c.id===id),r);else p.certs.push(r);
+  saveCache();closeSheet();render()}
 function delCert(pid,id){ask('Eliminar aquesta certificació?',async()=>{
   const r=await guard(async()=>{ok(await sb.from('certifications').delete().eq('id',id));return true});
   if(!r)return;P(pid).certs=P(pid).certs.filter(c=>c.id!==id);saveCache();render()})}
