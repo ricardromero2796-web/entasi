@@ -95,8 +95,10 @@ input,select,textarea{font-size:16px;-webkit-user-select:text;user-select:text}
 .sec .pill{border:0}
 
 /* Tot ha d'encaixar a l'amplada de la pantalla */
-html,body{max-width:100%;overflow-x:hidden}
-#app,.sheet>div{max-width:100%;overflow-x:hidden}
+html{max-width:100%;overflow-x:hidden}
+body{max-width:100%;overflow-x:clip}
+#app{max-width:100%;overflow-x:clip}
+.sheet>div{max-width:100%;overflow-x:hidden}
 .sheet>div{overflow-y:auto}
 input,select,textarea{min-width:0;max-width:100%;display:block}
 input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;min-height:48px;text-align:left;width:100%;max-width:100%;min-width:0;box-sizing:border-box;display:block}
