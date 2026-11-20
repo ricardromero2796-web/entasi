@@ -105,15 +105,15 @@ function home(){
       <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div></div>
     <div class="hi">${greet}</div>
     <div class="sub">${new Date().toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long'})}${offline?` · <span style="color:var(--red)">${ic('wifi')} sense connexió</span>`:''}</div>
-    <div class="stats"><div class="stat"><b>${projects.length}</b><span>Obres</span></div><div class="stat"><b>${all.length}</b><span>Tasques pendents</span></div><div class="stat"><b style="color:var(--lime)">${urgent}</b><span>Urgents</span></div></div>
+    <div class="stats"><div class="stat"><b>${projects.filter(q=>!isSmall(q)).length}</b><span>Obres</span></div><div class="stat"><b>${all.length}</b><span>Tasques pendents</span></div><div class="stat"><b style="color:var(--lime)">${urgent}</b><span>Urgents</span></div></div>
   </div>
-  <div class="subs" style="margin:16px 0 4px">${[['gran','Obres grans'],['petita','Obres petites']].map(([k,l])=>`<button class="${curSect()===k?'on':''}" onclick="setSect('${k}')">${l} · ${projects.filter(q=>(q.kind||'gran')===k).length}</button>`).join('')}</div>
-  <div class="sec"><h2>${curSect()==='gran'?'Obres grans':'Obres petites FGC'}</h2>${sortedProjects().length>1?`<button class="pill" style="font-size:12px;padding:6px 14px" onclick="ordering=!ordering;render()">${ordering?'Fet':'Ordenar'}</button>`:''}</div>
+  <div class="subs" style="margin:16px 0 4px">${[['gran','Obres'],['petita','Biblioteca']].map(([k,l])=>`<button class="${curSect()===k?'on':''}" onclick="setSect('${k}')">${l} · ${projects.filter(q=>(q.kind||'gran')===k).length}</button>`).join('')}</div>
+  <div class="sec"><h2>${curSect()==='gran'?'Obres':'Plànols genèrics'}</h2>${sortedProjects().length>1?`<button class="pill" style="font-size:12px;padding:6px 14px" onclick="ordering=!ordering;render()">${ordering?'Fet':'Ordenar'}</button>`:''}</div>
   ${sortedProjects().length?sortedProjects().map((p,i,arr)=>{const n=pending(p),u=n.filter(t=>t.prio==='alta').length,s=stats(p);
   if(isSmall(p))return`
   <${ordering?'div':'button'} class="card" data-pid="${p.id}" ${ordering?'':`onclick="go({name:'project',id:'${p.id}'},'tasks')"`}>
-    <div class="row"><span class="ttl" style="margin:0">${p.pinned?ic('pin')+' ':''}${esc(p.name)}</span>${u?`<span class="pill red">${u} urgent${u>1?'s':''}</span>`:''}</div>
-    <div class="row mu" style="margin-top:8px"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span></div>
+    <div class="row"><span class="ttl" style="margin:0">${p.pinned?ic('pin')+' ':''}${esc(p.name)}</span></div>
+    <div class="row mu" style="margin-top:8px"><span>${(p.plans||[]).length} plànols</span></div>
     ${ordering?octl(p,i,arr):''}
   </${ordering?'div':'button'}>`;
   return`
@@ -124,9 +124,9 @@ function home(){
     <div class="bar"><i style="width:${Math.min(100,s.exec||0)}%"></i>${s.time!==null?`<b class="mark" style="left:${s.time}%"></b>`:''}</div>
     <div class="row mu"><span>${n.length} tasques · ${(p.plans||[]).length} plànols</span><span>${s.exec!==null?Math.round(s.exec)+'% executat':'Sense pressupost'}</span></div>
     ${ordering?octl(p,i,arr):''}
-  </${ordering?'div':'button'}>`}).join(''):`<div class="empty">${curSect()==='gran'?'Encara no tens cap obra gran.':'Encara no tens cap obra petita.'}<br>Afegeix-ne una amb el botó de sota.</div>`}
-  <div class="mu" style="text-align:center;font-size:12px;margin:14px 0 0">Mantén premuda una obra per editar-la o esborrar-la</div>
-  <button class="fab" onclick="newProject()">${ic('plus')} ${curSect()==='gran'?'Nova obra':'Nova obra petita'}</button>`;
+  </${ordering?'div':'button'}>`}).join(''):`<div class="empty">${curSect()==='gran'?'Encara no tens cap obra.':'La biblioteca és buida.<br>Crea un tipus d\'obra (Atirantats, Compensacions…) i hi guardes els plànols genèrics.'}<br>Afegeix-ne una amb el botó de sota.</div>`}
+  <div class="mu" style="text-align:center;font-size:12px;margin:14px 0 0">Mantén premut per editar o esborrar</div>
+  <button class="fab" onclick="newProject()">${ic('plus')} ${curSect()==='gran'?'Nova obra':'Nou tipus d\'obra'}</button>`;
 }
 const octl=(p,i,arr)=>`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',-1)" aria-label="Pujar">${ic('arrow-up')}</button><button class="sm" ${i===arr.length-1||!!arr[i+1].pinned!==!!p.pinned?'disabled':''} onclick="moveProject('${p.id}',1)" aria-label="Baixar">${ic('arrow-down')}</button><button class="sm ${p.pinned?'on':''}" onclick="togglePin('${p.id}')" aria-label="Fixar a dalt">${ic('pin')}</button></div>`;
 const isSmall=p=>p.kind==='petita';
@@ -137,7 +137,11 @@ const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
   const cancel=()=>{clearTimeout(t);t=null};
   const mn=(title,edit,del)=>sheet(`<h3>${esc(title)}</h3><button class="btn" onclick="closeSheet();${edit}">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();${del}">${ic('trash')} Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);
   const eurm=v=>(typeof eur==='function'?eur(v):v);
-  const menu=c=>{fired=true;const d=c.dataset;
+  /* petita vibració: Android amb vibrate(); iPhone (iOS 17.4+) amb el truc de l'interruptor natiu */
+  const haptic=()=>{try{if(navigator.vibrate&&navigator.vibrate(12))return}catch(e){}
+    try{const l=document.createElement('label');l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-99px;top:0;opacity:0;pointer-events:none';
+      const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);document.body.appendChild(l);l.click();setTimeout(()=>l.remove(),150)}catch(e){}};
+  const menu=c=>{fired=true;haptic();const d=c.dataset;
     if(d.sid){const x=(P(d.spid)?.scopes||[]).find(s=>s.id===d.sid);if(x)mn(x.name,`editScope('${d.spid}','${d.sid}')`,`delScope('${d.spid}','${d.sid}')`);return}
     if(d.plid){const x=(P(d.ppid)?.plans||[]).find(s=>s.id===d.plid);if(x)mn(x.name,`editPlan('${d.ppid}','${d.plid}')`,`delPlan('${d.ppid}','${d.plid}')`);return}
     if(d.cid){const x=(P(d.cpid)?.certs||[]).find(s=>s.id===d.cid);if(x)mn('Certificació '+String(x.month).slice(0,7)+' · '+eurm(x.amount),`editCert('${d.cpid}','${d.cid}')`,`delCert('${d.cpid}','${d.cid}')`);return}
@@ -152,7 +156,7 @@ const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
 
 function project(){
   const p=P(view.id);if(!p)return go({name:'home'});
-  const small=isSmall(p);if(small&&tab!=='tasks'&&tab!=='plans')tab='tasks';
+  const small=isSmall(p);if(small)tab='plans';
   const n=pending(p);let body='';
   if(tab==='tasks'){
     const order={alta:0,mitja:1,baixa:2};
@@ -169,6 +173,7 @@ function project(){
       <div class="planrow" data-plid="${x.id}" data-ppid="${p.id}"><button class="plan" onclick="openPlan('${x.id}')"><div class="ico">${ic((x.type||'').includes('pdf')?'file-type-pdf':'photo')}</div>
       <div style="flex:1;min-width:0"><div style="word-break:break-word">${esc(x.name)}</div><div class="mu">${esc(x.version||'')}${x.version?' · ':''}${fmt((x.created_at||'').slice(0,10))}${c2?' · <span class="ok">offline</span>':''}</div></div></button>
       ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}</div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
+      +(small||!libItems().length?'':`<button class="btn ghost" onclick="libPick('${p.id}')">${ic('download')} Afegir de la biblioteca</button>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
   }else if(tab==='scopes'){
     const sc=[...(p.scopes||[])].sort((a,b)=>(a.planned_start||'9999')<(b.planned_start||'9999')?-1:1);
@@ -200,8 +205,8 @@ function project(){
   <div class="hdr" style="padding-bottom:22px">
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
-    ${small?'':`<div class="code" style="margin-top:18px">${esc(p.code)}</div>`}<div style="font-size:24px;margin:${small?'18px':'4px'} 0 4px">${esc(p.name)}</div><div class="sub">${small?'':esc(p.client)+' · '}${n.length} tasques pendents</div></div>
-  <div class="tabs">${(small?[['tasks','Tasques'],['plans','Plànols']]:[['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>
+    ${small?'':`<div class="code" style="margin-top:18px">${esc(p.code)}</div>`}<div style="font-size:24px;margin:${small?'18px':'4px'} 0 4px">${esc(p.name)}</div><div class="sub">${small?'Biblioteca · '+p.plans.length+' plànols':esc(p.client)+' · '+n.length+' tasques pendents'}</div></div>
+  ${small?'':`<div class="tabs">${([['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>`}
   <div style="margin-top:14px">${body}</div>`;
 }
 
@@ -225,7 +230,7 @@ function busy(on,txt){const b=$('#sheet .btn:not(.ghost)');if(b){b.disabled=on;i
 /* ---------- obres ---------- */
 function projectForm(p){
   p=p||{code:'',name:'',client:'',address:'',status:'En curs',budget:'',start_date:'',end_date:'',kind:curSect()};
-  if(isSmall(p))return`<h3>${p.id?'Editar obra petita':'Nova obra petita'}</h3>
+  if(isSmall(p))return`<h3>${p.id?'Editar tipus d\'obra':'Nou tipus d\'obra'}</h3>
   <label>NOM</label><input id="f_name" value="${esc(p.name)}" placeholder="Compensacions, Atirantats, Catenària rígida…">
   <button class="btn" onclick="saveProject('${p.id||''}')">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`;
   return`<h3>${p.id?'Editar obra':'Nova obra'}</h3>
@@ -237,6 +242,7 @@ function projectForm(p){
   <label>PRESSUPOST D'ADJUDICACIÓ (€)</label><input id="f_budget" type="number" inputmode="decimal" min="0" step="0.01" value="${p.budget||''}" placeholder="850000">
   <label>DATA D'INICI</label><input id="f_start" type="date" value="${esc(p.start_date||'')}">
   <label>FINAL DEL TERMINI</label><input id="f_end" type="date" value="${esc(p.end_date||'')}">
+  ${!p.id&&libItems().length?`<label>PLÀNOLS DE LA BIBLIOTECA</label><select id="f_lib"><option value="">Cap (obra buida)</option>${libItems().map(l=>`<option value="${l.id}">${esc(l.name)} · ${l.plans.length} plànols</option>`).join('')}</select>`:''}
   <button class="btn" onclick="saveProject('${p.id||''}')">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`}
 const newProject=()=>sheet(projectForm());
 const editProject=id=>sheet(projectForm(P(id)));
@@ -248,11 +254,35 @@ async function saveProject(id){
   const r=await guard(async()=>id?ok(await sb.from('projects').update(d).eq('id',id).select().single()):ok(await sb.from('projects').insert(d).select().single()));
   busy(false);if(!r)return;
   if(id)Object.assign(P(id),r);else{projects.unshift({...r,tasks:[],plans:[],certs:[],scopes:[],meetings:[]});view={name:'project',id:r.id};tab='tasks'}
+  const lib=(!id&&$('#f_lib'))?$('#f_lib').value:'';
   saveCache();closeSheet();render();
+  if(lib)await copyFromLib(r.id,lib);
+}
+/* biblioteca: copia tots els plànols d'un tipus d'obra a una obra (el fitxer es comparteix, no es duplica) */
+const libItems=()=>projects.filter(isSmall).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ca'));
+async function copyFromLib(pid,lid){
+  const src=P(lid),dst=P(pid);if(!src||!dst)return;
+  const have=new Set(dst.plans.map(x=>x.path)),todo=src.plans.filter(x=>!have.has(x.path));
+  if(!todo.length){toast('Aquest tipus no té plànols nous per copiar');return}
+  busy(true);
+  const rows=todo.map(x=>({project_id:pid,name:x.name,cat:x.cat,version:x.version||'',type:x.type,path:x.path,size:x.size}));
+  const r=await guard(async()=>ok(await sb.from('plans').insert(rows).select()));
+  busy(false);if(!r)return;
+  r.forEach(n=>{dst.plans.push(n);const o=todo.find(x=>x.path===n.path);if(o&&cached.has(o.id))fget(o.id).then(b=>{if(b)return fput(n.id,b).then(()=>{cached.add(n.id);render()})}).catch(()=>{})});
+  saveCache();render();toast(r.length+(r.length===1?' plànol copiat':' plànols copiats')+' de la biblioteca');
+}
+function libPick(pid){const L=libItems();if(!L.length){toast('La biblioteca és buida');return}
+  sheet(`<h3>Afegir de la biblioteca</h3>${L.map(l=>`<button class="btn ghost" onclick="closeSheet();copyFromLib('${pid}','${l.id}')">${esc(l.name)} · ${l.plans.length} plànols</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+/* esborrar fitxers només si cap altre plànol (d'una altra obra) els fa servir */
+async function removeFiles(paths,{planId,projectId}){
+  if(!paths.length)return;
+  const {data,error}=await sb.from('plans').select('id,project_id,path').in('path',paths);if(error)throw error;
+  const used=new Set((data||[]).filter(r=>planId?r.id!==planId:r.project_id!==projectId).map(r=>r.path));
+  const rm=paths.filter(p=>!used.has(p));if(rm.length)ok(await sb.storage.from('plans').remove(rm));
 }
 function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',async()=>{
   const p=P(id);
-  const r=await guard(async()=>{const paths=p.plans.map(x=>x.path);if(paths.length)ok(await sb.storage.from('plans').remove(paths));ok(await sb.from('projects').delete().eq('id',id));return true});
+  const r=await guard(async()=>{await removeFiles(p.plans.map(x=>x.path),{projectId:id});ok(await sb.from('projects').delete().eq('id',id));return true});
   if(!r)return;for(const x of p.plans){await fdel(x.id);cached.delete(x.id)}
   projects=projects.filter(q=>q.id!==id);saveCache();go({name:'home'})})}
 
@@ -439,7 +469,7 @@ async function updatePlan(pid,id){const name=$('#e_name').value.trim();if(!name)
   busy(false);if(!r)return;Object.assign(P(pid).plans.find(p=>p.id===id),r);saveCache();closeSheet();render()}
 function delPlan(pid,id){ask('Eliminar aquest plànol?',async()=>{
   const x=P(pid).plans.find(p=>p.id===id);
-  const r=await guard(async()=>{ok(await sb.storage.from('plans').remove([x.path]));ok(await sb.from('plans').delete().eq('id',id));return true});
+  const r=await guard(async()=>{await removeFiles([x.path],{planId:id});ok(await sb.from('plans').delete().eq('id',id));return true});
   if(!r)return;await fdel(id);cached.delete(id);P(pid).plans=P(pid).plans.filter(p=>p.id!==id);saveCache();render()})}
 function findPlan(id){for(const p of projects){const x=p.plans.find(q=>q.id===id);if(x)return x}}
 async function planBlob(x){let b=await fget(x.id);if(b)return b;
