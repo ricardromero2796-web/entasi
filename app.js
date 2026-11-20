@@ -132,12 +132,17 @@ const octl=(p,i,arr)=>`<div class="octl"><button class="sm" ${i===0||!!arr[i-1].
 const isSmall=p=>p.kind==='petita';
 const curSect=()=>pref.sect==='petita'?'petita':'gran';
 const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
-/* mantenir premut sobre una obra o un àmbit: editar o esborrar */
-(()=>{let t=null,sx=0,sy=0,fired=false;const SEL='.card[data-pid],.card[data-sid]';
+/* mantenir premut sobre una obra, àmbit, plànol, certificació o reunió: editar o eliminar */
+(()=>{let t=null,sx=0,sy=0,fired=false;const SEL='.card[data-pid],.card[data-sid],[data-plid],[data-cid],[data-mid]';
   const cancel=()=>{clearTimeout(t);t=null};
-  const menu=c=>{fired=true;if(c.dataset.sid){const pid=c.dataset.spid,id=c.dataset.sid,x=(P(pid)?.scopes||[]).find(s=>s.id===id);if(!x)return;
-      sheet(`<h3>${esc(x.name)}</h3><button class="btn" onclick="closeSheet();editScope('${pid}','${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="delScope('${pid}','${id}')">${ic('trash')} Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);return}
-    const id=c.dataset.pid,p=P(id);if(!p)return;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
+  const mn=(title,edit,del)=>sheet(`<h3>${esc(title)}</h3><button class="btn" onclick="closeSheet();${edit}">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();${del}">${ic('trash')} Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);
+  const eurm=v=>(typeof eur==='function'?eur(v):v);
+  const menu=c=>{fired=true;const d=c.dataset;
+    if(d.sid){const x=(P(d.spid)?.scopes||[]).find(s=>s.id===d.sid);if(x)mn(x.name,`editScope('${d.spid}','${d.sid}')`,`delScope('${d.spid}','${d.sid}')`);return}
+    if(d.plid){const x=(P(d.ppid)?.plans||[]).find(s=>s.id===d.plid);if(x)mn(x.name,`editPlan('${d.ppid}','${d.plid}')`,`delPlan('${d.ppid}','${d.plid}')`);return}
+    if(d.cid){const x=(P(d.cpid)?.certs||[]).find(s=>s.id===d.cid);if(x)mn('Certificació '+String(x.month).slice(0,7)+' · '+eurm(x.amount),`editCert('${d.cpid}','${d.cid}')`,`delCert('${d.cpid}','${d.cid}')`);return}
+    if(d.mid){const x=(P(d.mpid)?.meetings||[]).find(s=>s.id===d.mid);if(x)mn('Reunió '+x.date,`editMeeting('${d.mpid}','${d.mid}')`,`delMeeting('${d.mpid}','${d.mid}')`);return}
+    const id=d.pid,p=P(id);if(!p)return;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
   document.addEventListener('pointerdown',e=>{fired=false;const c=e.target.closest&&e.target.closest(SEL);if(!c||ordering||e.button>0)return;sx=e.clientX;sy=e.clientY;fired=false;cancel();t=setTimeout(()=>menu(c),550)});
   document.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)cancel()});
   ['pointerup','pointercancel','scroll'].forEach(n=>document.addEventListener(n,cancel,true));
@@ -161,11 +166,9 @@ function project(){
     const ps=pref.psort||'recent',nc=(a,b)=>String(a.name).localeCompare(String(b.name),'ca',{numeric:true,sensitivity:'base'});
     const pl=[...p.plans].sort(ps==='az'?nc:ps==='za'?(a,b)=>nc(b,a):(a,b)=>a.created_at<b.created_at?1:-1),cats=[...new Set(pl.map(x=>x.cat))];
     body=(pl.length?`<div class="sec" style="margin-top:0"><h2>${pl.length} plànol${pl.length===1?'':'s'}</h2><button class="pill" style="font-size:12px;padding:6px 14px" onclick="sortPlans()">Ordenar: ${PSORT[ps]}</button></div>`:'')+(pl.length?cats.map(c=>`<div class="sec" style="margin-top:14px"><h2>${esc(c)}</h2></div>`+pl.filter(x=>x.cat===c).map(x=>{const c2=cached.has(x.id);return`
-      <div class="planrow"><button class="plan" onclick="openPlan('${x.id}')"><div class="ico">${ic((x.type||'').includes('pdf')?'file-type-pdf':'photo')}</div>
+      <div class="planrow" data-plid="${x.id}" data-ppid="${p.id}"><button class="plan" onclick="openPlan('${x.id}')"><div class="ico">${ic((x.type||'').includes('pdf')?'file-type-pdf':'photo')}</div>
       <div style="flex:1;min-width:0"><div style="word-break:break-word">${esc(x.name)}</div><div class="mu">${esc(x.version||'')}${x.version?' · ':''}${fmt((x.created_at||'').slice(0,10))}${c2?' · <span class="ok">offline</span>':''}</div></div></button>
-      ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}
-      <button class="sm" onclick="editPlan('${p.id}','${x.id}')" aria-label="Editar">${ic('edit')}</button>
-      <button class="sm" onclick="delPlan('${p.id}','${x.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
+      ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}</div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
   }else if(tab==='scopes'){
     const sc=[...(p.scopes||[])].sort((a,b)=>(a.planned_start||'9999')<(b.planned_start||'9999')?-1:1);
@@ -179,10 +182,10 @@ function project(){
     if(sub==='certs'){
       inner=(s.exec!==null?`<div class="card"><div class="mu" style="font-size:12px;letter-spacing:.1em;margin-bottom:6px">CERTIFICAT</div><div style="font-size:26px">${eur(s.cert)}<span style="font-size:14px" class="mu"> de ${eur(s.bud)}</span></div><div class="bar" style="margin:10px 0 0"><i style="width:${Math.min(100,s.exec)}%"></i></div></div>`
         :`<div class="mu" style="margin:0 4px 12px">Posa el pressupost d'adjudicació a <b>Dades › Editar obra</b> perquè l'app calculi l'avanç.</div>`)
-        +(cs.length?cs.map(c=>`<div class="task" style="align-items:center"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div><button class="del" onclick="editCert('${p.id}','${c.id}')" aria-label="Editar">${ic('edit')}</button><button class="del" onclick="delCert('${p.id}','${c.id}')" aria-label="Eliminar">${ic('trash')}</button></div>`).join(''):`<div class="empty">Cap certificació encara.</div>`)
+        +(cs.length?cs.map(c=>`<div class="task" style="align-items:center" data-cid="${c.id}" data-cpid="${p.id}"><div class="t">${mes(c.month)}<div class="mu">${esc(c.note||'')}</div></div><div>${eur(c.amount)}</div></div>`).join(''):`<div class="empty">Cap certificació encara.</div>`)
         +`<button class="fab" onclick="newCert('${p.id}')">${ic('plus')} Afegir certificació</button>`;
     }else if(sub==='meets'){
-      inner=(ms.length?ms.map(m=>`<button class="card meet" onclick="editMeeting('${p.id}','${m.id}')"><div class="row"><b>${fmt(m.date)} ${m.date.slice(0,4)}</b><span class="mu" style="display:flex;align-items:center;gap:8px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title||'')}</span>${ic('edit')}</span></div>${m.attendees?`<div class="mu" style="margin-top:4px">${ic('users')} ${esc(m.attendees)}</div>`:''}<div class="mnotes">${esc(m.notes||'')}</div></button>`).join(''):`<div class="empty">Cap reunió encara.<br>Apunta aquí les reunions setmanals.</div>`)
+      inner=(ms.length?ms.map(m=>`<button class="card meet" data-mid="${m.id}" data-mpid="${p.id}" onclick="editMeeting('${p.id}','${m.id}')"><div class="row"><b>${fmt(m.date)} ${m.date.slice(0,4)}</b><span class="mu">${esc(m.title||'')}</span></div>${m.attendees?`<div class="mu" style="margin-top:4px">${ic('users')} ${esc(m.attendees)}</div>`:''}<div class="mnotes">${esc(m.notes||'')}</div></button>`).join(''):`<div class="empty">Cap reunió encara.<br>Apunta aquí les reunions setmanals.</div>`)
         +`<button class="fab" onclick="newMeeting('${p.id}')">${ic('plus')} Nova reunió</button>`;
     }else{
       inner=`<div class="card">${[['Codi',p.code],['Client',p.client],['Estat',p.status],['Inici',p.start_date?fmt(p.start_date)+' '+p.start_date.slice(0,4):'—'],['Final del termini',p.end_date?fmt(p.end_date)+' '+p.end_date.slice(0,4):'—']].map(([k,v])=>`<div class="kv"><span class="mu">${k}</span><span>${esc(v)}</span></div>`).join('')}
