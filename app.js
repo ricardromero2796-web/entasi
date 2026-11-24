@@ -184,7 +184,7 @@ function project(){
     body=measTab(p);
   }else if(tab==='scopes'){
     const sc=[...(p.scopes||[])].sort((a,b)=>(a.planned_start||'9999')<(b.planned_start||'9999')?-1:1);
-    body=(sc.length?sc.map(x=>scopeCard(p,x)).join(''):`<div class="empty">Cap àmbit encara.<br>Afegeix zones de l'obra, com "Pou nord", per seguir-ne les dates.</div>`)
+    body=(sc.length?sc.map(x=>scopeCard(p,x)).join(''):`<div class="empty">El planning és buit.<br>Afegeix àmbits (zones de l'obra, com "Pou nord") per seguir-ne les dates.</div>`)
       +`<button class="fab" onclick="newScope('${p.id}')">${ic('plus')} Nou àmbit</button>`;
   }else{
     const s=stats(p),cs=[...(p.certs||[])].sort((a,b)=>a.month<b.month?1:-1),ms=[...(p.meetings||[])].sort((a,b)=>a.date<b.date?1:-1);
@@ -213,7 +213,7 @@ function project(){
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
     ${small?'':`<div class="code" style="margin-top:18px">${esc(p.code)}</div>`}<div style="font-size:24px;margin:${small?'18px':'4px'} 0 4px">${esc(p.name)}</div><div class="sub">${small?'Biblioteca · '+p.plans.length+' plànols':esc(p.client)+' · '+n.length+' tasques pendents'}</div></div>
-  ${small?'':`<div class="tabs">${([['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['meas','Medicions'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>`}
+  ${small?'':`<div class="tabs">${([['tasks','Tasques'],['plans','Plànols'],['scopes','Planning'],['meas','Medicions'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>`}
   <div style="margin-top:14px">${body}</div>`;
 }
 
