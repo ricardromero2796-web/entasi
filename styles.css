@@ -162,3 +162,15 @@ html:has(#sheet),html:has(.viewer){overflow:hidden}
 .mhead{padding:14px 6px;min-height:44px;box-sizing:border-box;margin-top:6px!important;border-radius:12px}
 .mhead[data-chap]{background:var(--s1);border:1px solid var(--bd);margin-bottom:8px}
 .mhead[data-chap]:active{background:var(--s2)}
+/* Medicions: capítols grans i desplegables, medicions més petites a dins */
+.chead{display:flex;align-items:center;gap:12px;padding:18px 16px;margin:10px 0 0;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);cursor:pointer}
+.chead:active{background:var(--s2)}
+.chead.open{border-color:var(--teal)}
+.chmain{flex:1;min-width:0}
+.chname{display:block;font-size:19px;color:var(--tx);word-break:break-word}
+.chmeta{display:block;margin-top:4px;font-size:12px;color:var(--mu)}
+.chev{display:flex;color:var(--mu);transition:transform .2s}.chev svg{width:22px;height:22px}
+.chead.open .chev{transform:rotate(180deg)}
+.chbody{margin:8px 0 8px 8px;padding-left:10px;border-left:2px solid var(--bd)}
+.chbody .mrow{padding:11px 14px;font-size:14px;margin-bottom:8px}
+.chbody .mval{font-size:15px}

@@ -399,15 +399,19 @@ function measTab(p){
   const row=x=>`<button class="card mrow" data-xid="${x.id}" data-xpid="${p.id}" onclick="editMeas('${p.id}','${x.id}')">
     <div class="row"><b style="word-break:break-word">${esc(x.name)}</b><span class="mval">${mq(mval(x))} ${MU[x.unit]||''}</span></div>
     ${mdims(x)?`<div class="mu" style="margin-top:4px">${esc(mdims(x))}</div>`:''}${x.note?`<div class="mu" style="margin-top:4px;opacity:.85">${esc(x.note)}</div>`:''}</button>`;
-  const grp=(title,list,i)=>`<div class="sec mhead" style="margin-top:16px" ${i>=0?`data-chap="${i}" data-chpid="${p.id}"`:''}><h2>${esc(title)}</h2><span class="mu" style="font-size:12px">${list.length?mtxt(msum(list)):''}</span></div>`
-    +(list.length?[...list].sort(cmp).map(row).join(''):`<div class="mu" style="margin:2px 4px 8px;font-size:13px">Cap element en aquest capítol.</div>`);
-  const tot=msum(ms);
-  let html=`<div class="card"><div class="mu" style="font-size:12px;letter-spacing:.1em;margin-bottom:8px">TOTAL OBRA</div>${ms.length?`<div class="mtot">${Object.keys(MU).filter(u=>tot[u]>0).map(u=>`<div><b>${mq(tot[u])}</b><span class="mu"> ${MU[u]}</span></div>`).join('')||'<span class="mu">—</span>'}</div>`:`<div class="mu">Encara no hi ha cap medició.</div>`}</div>`;
-  if(ms.length>1)html+=`<div class="sec" style="margin-top:12px"><h2>${ms.length} elements</h2><button class="pill" style="font-size:12px;padding:6px 14px" onclick="sortMeas()">Ordenar: ${MSORT[srt]}</button></div>`;
-  html+=groups.map(g=>grp(g.n,ms.filter(x=>(x.chapter||'')===g.n),g.i)).join('');
+  const open=k=>mOpen.has(p.id+'|'+k);
+  const grp=(title,list,i,k)=>{const o=open(k);return`<div class="chead ${o?'open':''}" ${i>=0?`data-chap="${i}" data-chpid="${p.id}"`:''} onclick="togM('${p.id}','${k}')"><div class="chmain"><span class="chname">${esc(title)}</span><span class="chmeta">${list.length} ${list.length===1?'element':'elements'}${list.length?' · '+mtxt(msum(list)):''}</span></div><span class="chev">${ic('chev')}</span></div>`
+    +(o?(list.length?`<div class="chbody">${[...list].sort(cmp).map(row).join('')}</div>`:`<div class="mu chbody" style="font-size:13px;padding:2px 6px 10px">Cap element en aquest capítol.</div>`):'')};
+  let html='';
+  if(ms.length>1)html+=`<div class="sec" style="margin-top:4px"><h2>${ms.length} elements</h2><button class="pill" style="font-size:12px;padding:6px 14px" onclick="sortMeas()">Ordenar: ${MSORT[srt]}</button></div>`;
+  if(!ms.length&&!groups.length)html+=`<div class="empty">Cap medició encara.<br>Afegeix un capítol i, a dins, les mesures dels elements.</div>`;
+  html+=groups.map((g,n)=>grp(g.n,ms.filter(x=>(x.chapter||'')===g.n),g.i,g.i>=0?'c'+g.i:'e'+n)).join('');
   const loose=ms.filter(x=>!(x.chapter||''));
-  if(loose.length)html+=grp(groups.length?'Sense capítol':'Elements',loose,-1);
+  if(loose.length)html+=grp(groups.length?'Sense capítol':'Elements',loose,-1,'l');
   return html+`<div class="mu" style="text-align:center;font-size:12px;margin:14px 0 0">Mantén premut un capítol o un element per editar-lo o eliminar-lo</div><button class="btn ghost" onclick="newChapter('${p.id}')">${ic('plus')} Afegir capítol</button><button class="fab" onclick="newMeas('${p.id}')">${ic('plus')} Nova medició</button>`}
+const mOpen=new Set();
+IC.chev='<path d="m6 9 6 6 6-6"/>';
+function togM(pid,k){const key=pid+'|'+k;if(mOpen.has(key))mOpen.delete(key);else mOpen.add(key);render()}
 function sortMeas(){const c=pref.msort||'recent';sheet(`<h3>Ordenar medicions</h3>${Object.entries(MSORT).map(([k,l])=>`<button class="btn ${c===k?'':'ghost'}" onclick="setMSort('${k}')">${l}</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Tancar</button>`)}
 function setMSort(k){pref.msort=k;savePref();closeSheet();render()}
 let mUnit='m3';
@@ -450,6 +454,7 @@ async function saveMeas(pid,id){
   const r=await guard(async()=>id?ok(await sb.from('measurements').update(row).eq('id',id).select().single()):ok(await sb.from('measurements').insert({...row,project_id:pid}).select().single()));
   busy(false);if(!r)return;const p=P(pid);p.meas=p.meas||[];
   if(id)Object.assign(p.meas.find(x=>x.id===id),r);else p.meas.push(r);
+  const ci=chaps(p).indexOf(row.chapter);mOpen.add(pid+'|'+(row.chapter===''?'l':ci>=0?'c'+ci:'l')); /* obre el capítol on s'ha desat */
   saveCache();closeSheet();render()}
 function delMeas(pid,id){ask('Eliminar aquest element?',async()=>{
   const r=await guard(async()=>{ok(await sb.from('measurements').delete().eq('id',id));return true});
@@ -472,7 +477,8 @@ async function saveChap(pid,i){
 function delChapter(pid,i){const p=P(pid),old=chaps(p)[i];ask(`Eliminar el capítol «${old}»? Els seus elements passaran a «Sense capítol».`,async()=>{
   const cs=chaps(p).filter((c,k)=>k!==i);
   const r=await guard(async()=>{ok(await sb.from('measurements').update({chapter:''}).eq('project_id',pid).eq('chapter',old));ok(await sb.from('projects').update({meas_chapters:cs}).eq('id',pid));return true});
-  if(!r)return;(p.meas||[]).forEach(x=>{if(x.chapter===old)x.chapter=''});p.meas_chapters=cs;saveCache();render()})}
+  if(!r)return;(p.meas||[]).forEach(x=>{if(x.chapter===old)x.chapter=''});p.meas_chapters=cs;
+  [...mOpen].forEach(k=>{if(k.startsWith(pid+'|c'))mOpen.delete(k)});saveCache();render()})}
 
 /* ---------- certificacions ---------- */
 const newCert=pid=>certForm(pid);
