@@ -82,7 +82,10 @@ async function logout(){closeSheet();await sb.auth.signOut();user=null;projects=
 /* ---------- dades ---------- */
 async function refresh(){
   try{
-    const data=ok(await sb.from('projects').select('*, tasks(*), plans(*), certs:certifications(*), scopes(*), meetings(*)').order('created_at',{ascending:false}));
+    const base='*, tasks(*), plans(*), certs:certifications(*), scopes(*), meetings(*)';
+    let data;
+    try{data=ok(await sb.from('projects').select(base+', meas:measurements(*)').order('created_at',{ascending:false}))}
+    catch(e){data=ok(await sb.from('projects').select(base).order('created_at',{ascending:false}))} /* si la taula de medicions encara no existeix */
     projects=data;saveCache();offline=false;render();
   }catch(e){offline=true;render();toast(navigator.onLine?'No s\'han pogut carregar les dades':'Sense connexió: es mostren les dades desades')}
 }
@@ -133,7 +136,7 @@ const isSmall=p=>p.kind==='petita';
 const curSect=()=>pref.sect==='petita'?'petita':'gran';
 const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
 /* mantenir premut sobre una obra, àmbit, plànol, certificació o reunió: editar o eliminar */
-(()=>{let t=null,sx=0,sy=0,fired=false;const SEL='.card[data-pid],.card[data-sid],[data-plid],[data-cid],[data-mid]';
+(()=>{let t=null,sx=0,sy=0,fired=false;const SEL='.card[data-pid],.card[data-sid],[data-plid],[data-cid],[data-mid],[data-xid],[data-chap]';
   const cancel=()=>{clearTimeout(t);t=null};
   const mn=(title,edit,del)=>sheet(`<h3>${esc(title)}</h3><button class="btn" onclick="closeSheet();${edit}">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();${del}">${ic('trash')} Eliminar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`);
   const eurm=v=>(typeof eur==='function'?eur(v):v);
@@ -145,6 +148,8 @@ const setSect=k=>{pref.sect=k;savePref();ordering=false;render()};
     if(d.sid){const x=(P(d.spid)?.scopes||[]).find(s=>s.id===d.sid);if(x)mn(x.name,`editScope('${d.spid}','${d.sid}')`,`delScope('${d.spid}','${d.sid}')`);return}
     if(d.plid){const x=(P(d.ppid)?.plans||[]).find(s=>s.id===d.plid);if(x)mn(x.name,`editPlan('${d.ppid}','${d.plid}')`,`delPlan('${d.ppid}','${d.plid}')`);return}
     if(d.cid){const x=(P(d.cpid)?.certs||[]).find(s=>s.id===d.cid);if(x)mn('Certificació '+String(x.month).slice(0,7)+' · '+eurm(x.amount),`editCert('${d.cpid}','${d.cid}')`,`delCert('${d.cpid}','${d.cid}')`);return}
+    if(d.xid){const x=(P(d.xpid)?.meas||[]).find(s=>s.id===d.xid);if(x)mn(x.name,`editMeas('${d.xpid}','${d.xid}')`,`delMeas('${d.xpid}','${d.xid}')`);return}
+    if(d.chap!==undefined){const nm=chaps(P(d.chpid)||{})[+d.chap];if(nm!==undefined)mn('Capítol: '+nm,`renameChapter('${d.chpid}',${+d.chap})`,`delChapter('${d.chpid}',${+d.chap})`);return}
     if(d.mid){const x=(P(d.mpid)?.meetings||[]).find(s=>s.id===d.mid);if(x)mn('Reunió '+x.date,`editMeeting('${d.mpid}','${d.mid}')`,`delMeeting('${d.mpid}','${d.mid}')`);return}
     const id=d.pid,p=P(id);if(!p)return;sheet(`<h3>${esc(p.name)}</h3><button class="btn" onclick="editProject('${id}')">${ic('edit')} Editar</button><button class="btn ghost" style="color:var(--red)" onclick="closeSheet();delProject('${id}')">${ic('trash')} Esborrar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)};
   document.addEventListener('pointerdown',e=>{fired=false;const c=e.target.closest&&e.target.closest(SEL);if(!c||ordering||e.button>0)return;sx=e.clientX;sy=e.clientY;fired=false;cancel();t=setTimeout(()=>menu(c),550)});
@@ -175,6 +180,8 @@ function project(){
       ${c2?'':`<button class="sm" onclick="cachePlan('${x.id}')" aria-label="Descarregar per veure sense cobertura">${ic('download')}</button>`}</div>`}).join('')).join(''):`<div class="empty">Cap plànol encara.<br>Puja el primer PDF o imatge.</div>`)
       +(small||!libItems().length?'':`<button class="btn ghost" onclick="libPick('${p.id}')">${ic('download')} Afegir de la biblioteca</button>`)
       +`<button class="fab" onclick="newPlan('${p.id}')">${ic('upload')} Pujar plànol</button>`;
+  }else if(tab==='meas'){
+    body=measTab(p);
   }else if(tab==='scopes'){
     const sc=[...(p.scopes||[])].sort((a,b)=>(a.planned_start||'9999')<(b.planned_start||'9999')?-1:1);
     body=(sc.length?sc.map(x=>scopeCard(p,x)).join(''):`<div class="empty">Cap àmbit encara.<br>Afegeix zones de l'obra, com "Pou nord", per seguir-ne les dates.</div>`)
@@ -206,7 +213,7 @@ function project(){
     <div class="top"><button class="back" style="margin:0" onclick="go({name:'home'})">${ic('arrow-left')} Obres</button>
     <button class="ibtn" onclick="toggleTheme()" aria-label="Canviar tema">${ic(pref.theme==='dark'?'sun':'moon')}</button></div>
     ${small?'':`<div class="code" style="margin-top:18px">${esc(p.code)}</div>`}<div style="font-size:24px;margin:${small?'18px':'4px'} 0 4px">${esc(p.name)}</div><div class="sub">${small?'Biblioteca · '+p.plans.length+' plànols':esc(p.client)+' · '+n.length+' tasques pendents'}</div></div>
-  ${small?'':`<div class="tabs">${([['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>`}
+  ${small?'':`<div class="tabs">${([['tasks','Tasques'],['plans','Plànols'],['scopes','Àmbits'],['meas','Medicions'],['mgmt','Gestió']]).map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${l}</button>`).join('')}</div>`}
   <div style="margin-top:14px">${body}</div>`;
 }
 
@@ -368,6 +375,105 @@ function delScope(pid,id){closeSheet();ask('Eliminar aquest àmbit?',async()=>{
 const PSORT={recent:'Més recents',az:'Nom A–Z',za:'Nom Z–A'};
 function sortPlans(){const c=pref.psort||'recent';sheet(`<h3>Ordenar plànols</h3>${Object.entries(PSORT).map(([k,l])=>`<button class="btn ${c===k?'':'ghost'}" onclick="setPSort('${k}')">${l}</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Tancar</button>`)}
 function setPSort(k){pref.psort=k;savePref();closeSheet();render()}
+/* ---------- medicions ---------- */
+const MU={m2:'m²',m3:'m³',m:'m',ut:'ut'};
+const MSORT={recent:'Més recents',az:'Nom A–Z',za:'Nom Z–A',big:'Quantitat ↓'};
+const mnum=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?0:n};
+const mq=n=>new Intl.NumberFormat('ca-ES',{maximumFractionDigits:2}).format(+n||0);
+function mcalc(x){const w=+x.width||0,l=+x.length||0,d=+x.depth||0,q=(x.qty==null?1:+x.qty)||0;return{m2:w*l*q,m3:w*l*d*q,m:l*q,ut:q}}
+const mval=x=>mcalc(x)[x.unit]||0;
+const chaps=p=>Array.isArray(p.meas_chapters)?p.meas_chapters:[];
+const mcmp=(a,b)=>String(a.name).localeCompare(String(b.name),'ca',{numeric:true,sensitivity:'base'});
+function msum(list){const t={m2:0,m3:0,m:0,ut:0};list.forEach(x=>{if(t[x.unit]!==undefined)t[x.unit]+=mval(x)});return t}
+const mtxt=t=>Object.keys(MU).filter(u=>t[u]>0).map(u=>`${mq(t[u])} ${MU[u]}`).join(' · ')||'—';
+function mdims(x){const p=[];
+  if(x.unit==='m2'||x.unit==='m3'){[x.width,x.length,x.depth].forEach(v=>{if(+v>0)p.push(mq(v))});if(p.length)p[p.length-1]+=' m'}
+  else if(x.unit==='m'&&+x.length>0&&(+x.qty||1)!==1)p.push(mq(x.length)+' m');
+  if(x.unit==='ut')return'';
+  let s=p.join(' × ');if((+x.qty||1)!==1)s+=(s?' · ':'')+'× '+mq(x.qty)+' ut';return s}
+function measTab(p){
+  const ms=p.meas||[],ch=chaps(p),srt=pref.msort||'recent';
+  const cmp=srt==='az'?mcmp:srt==='za'?(a,b)=>mcmp(b,a):srt==='big'?(a,b)=>mval(b)-mval(a):(a,b)=>a.created_at<b.created_at?1:-1;
+  const extra=[...new Set(ms.map(x=>x.chapter||'').filter(c=>c&&!ch.includes(c)))];
+  const groups=[...ch.map((n,i)=>({n,i})),...extra.map(n=>({n,i:-1}))];
+  const row=x=>`<button class="card mrow" data-xid="${x.id}" data-xpid="${p.id}" onclick="editMeas('${p.id}','${x.id}')">
+    <div class="row"><b style="word-break:break-word">${esc(x.name)}</b><span class="mval">${mq(mval(x))} ${MU[x.unit]||''}</span></div>
+    ${mdims(x)?`<div class="mu" style="margin-top:4px">${esc(mdims(x))}</div>`:''}${x.note?`<div class="mu" style="margin-top:4px;opacity:.85">${esc(x.note)}</div>`:''}</button>`;
+  const grp=(title,list,i)=>`<div class="sec mhead" style="margin-top:16px" ${i>=0?`data-chap="${i}" data-chpid="${p.id}"`:''}><h2>${esc(title)}</h2><span class="mu" style="font-size:12px">${list.length?mtxt(msum(list)):''}</span></div>`
+    +(list.length?[...list].sort(cmp).map(row).join(''):`<div class="mu" style="margin:2px 4px 8px;font-size:13px">Cap element en aquest capítol.</div>`);
+  const tot=msum(ms);
+  let html=`<div class="card"><div class="mu" style="font-size:12px;letter-spacing:.1em;margin-bottom:8px">TOTAL OBRA</div>${ms.length?`<div class="mtot">${Object.keys(MU).filter(u=>tot[u]>0).map(u=>`<div><b>${mq(tot[u])}</b><span class="mu"> ${MU[u]}</span></div>`).join('')||'<span class="mu">—</span>'}</div>`:`<div class="mu">Encara no hi ha cap medició.</div>`}</div>`;
+  if(ms.length>1)html+=`<div class="sec" style="margin-top:12px"><h2>${ms.length} elements</h2><button class="pill" style="font-size:12px;padding:6px 14px" onclick="sortMeas()">Ordenar: ${MSORT[srt]}</button></div>`;
+  html+=groups.map(g=>grp(g.n,ms.filter(x=>(x.chapter||'')===g.n),g.i)).join('');
+  const loose=ms.filter(x=>!(x.chapter||''));
+  if(loose.length)html+=grp(groups.length?'Sense capítol':'Elements',loose,-1);
+  return html+`<button class="btn ghost" onclick="newChapter('${p.id}')">${ic('plus')} Afegir capítol</button><button class="fab" onclick="newMeas('${p.id}')">${ic('plus')} Nova medició</button>`}
+function sortMeas(){const c=pref.msort||'recent';sheet(`<h3>Ordenar medicions</h3>${Object.entries(MSORT).map(([k,l])=>`<button class="btn ${c===k?'':'ghost'}" onclick="setMSort('${k}')">${l}</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Tancar</button>`)}
+function setMSort(k){pref.msort=k;savePref();closeSheet();render()}
+let mUnit='m3';
+function measForm(pid,x){const p=P(pid);x=x||{unit:'m3',qty:1,chapter:''};mUnit=x.unit||'m3';
+  const names=[...chaps(p),...[...new Set((p.meas||[]).map(y=>y.chapter||'').filter(c=>c&&!chaps(p).includes(c)))]];
+  const v=n=>n==null?'':String(n).replace('.',',');
+  return`<h3>${x.id?'Editar medició':'Nova medició'}</h3>
+  <label style="margin-top:0">ELEMENT</label><input id="x_name" value="${esc(x.name||'')}" placeholder="Sabata S-3, solera pou nord…">
+  <label>CAPÍTOL</label><select id="x_ch"><option value="">Sense capítol</option>${names.map(n=>`<option value="${esc(n)}" ${x.chapter===n?'selected':''}>${esc(n)}</option>`).join('')}</select>
+  <label>COMPTAR EN</label><div class="subs" id="x_units" style="margin:0 0 6px">${Object.entries(MU).map(([k,l])=>`<button type="button" data-u="${k}" class="${mUnit===k?'on':''}" onclick="setMU('${k}')">${l}</button>`).join('')}</div>
+  <div class="g3" id="x_dims"><div id="d_w"><label>AMPLE (m)</label><input id="x_w" type="text" inputmode="decimal" value="${v(x.width)}" oninput="mPrev()"></div>
+  <div id="d_l"><label>LLARG (m)</label><input id="x_l" type="text" inputmode="decimal" value="${v(x.length)}" oninput="mPrev()"></div>
+  <div id="d_d"><label>PROFUND. (m)</label><input id="x_d" type="text" inputmode="decimal" value="${v(x.depth)}" oninput="mPrev()"></div></div>
+  <label>UNITATS IGUALS</label><input id="x_q" type="text" inputmode="decimal" value="${v(x.qty==null?1:x.qty)}" oninput="mPrev()">
+  <div class="card" id="x_prev" style="margin-top:14px"></div>
+  <label>NOTA (opcional)</label><input id="x_note" value="${esc(x.note||'')}" placeholder="Armat, observacions…">
+  <button class="btn" onclick="saveMeas('${pid}','${x.id||''}')">${x.id?'Desar':'Afegir'}</button>
+  <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`}
+function newMeas(pid){sheet(measForm(pid));setMU(mUnit)}
+function editMeas(pid,id){sheet(measForm(pid,P(pid).meas.find(x=>x.id===id)));setMU(mUnit)}
+function setMU(u){mUnit=u;document.querySelectorAll('#x_units button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
+  const vis={w:u==='m2'||u==='m3',l:u!=='ut',d:u==='m2'||u==='m3'};
+  ['w','l','d'].forEach(k=>{const e=document.getElementById('d_'+k);if(e)e.style.display=vis[k]?'':'none'});
+  const g=document.getElementById('x_dims');
+  if(g){g.style.display=u==='ut'?'none':'';g.style.gridTemplateColumns=u==='m'?'1fr':'repeat(3,1fr)'}
+  mPrev()}
+const mvals=()=>({width:mnum($('#x_w').value),length:mnum($('#x_l').value),depth:mnum($('#x_d').value),qty:$('#x_q').value.trim()===''?1:mnum($('#x_q').value)});
+function mPrev(){const e=document.getElementById('x_prev');if(!e)return;const x={...mvals(),unit:mUnit},c=mcalc(x);
+  const lines=(mUnit==='m2'||mUnit==='m3')?[['Superfície',c.m2,'m²'],['Volum',c.m3,'m³']]:[];
+  e.innerHTML=lines.map(([l,v,u])=>`<div class="kv"><span class="mu">${l}</span><span>${mq(v)} ${u}</span></div>`).join('')
+    +`<div class="kv"><span class="mu">TOTAL${mUnit==='m2'||mUnit==='m3'?' (en '+MU[mUnit]+')':''}</span><b style="font-size:18px">${mq(c[mUnit])} ${MU[mUnit]}</b></div>`}
+async function saveMeas(pid,id){
+  const name=$('#x_name').value.trim();if(!name){toast("Posa el nom de l'element");return}
+  const v=mvals(),u=mUnit;
+  const okd=u==='m2'?v.width>0&&v.length>0:u==='m3'?v.width>0&&v.length>0&&v.depth>0:u==='m'?v.length>0:v.qty>0;
+  if(!okd){toast(u==='m3'?'Per a m³ calen ample, llarg i profunditat':u==='m2'?'Per a m² calen ample i llarg':u==='m'?'Escriu la llargada':'Escriu les unitats');return}
+  if(!(v.qty>0)){toast('Les unitats han de ser més de 0');return}
+  const row={name,chapter:$('#x_ch').value,unit:u,width:v.width||null,length:v.length||null,depth:v.depth||null,qty:v.qty,note:$('#x_note').value.trim()};
+  busy(true,'Desant…');
+  const r=await guard(async()=>id?ok(await sb.from('measurements').update(row).eq('id',id).select().single()):ok(await sb.from('measurements').insert({...row,project_id:pid}).select().single()));
+  busy(false);if(!r)return;const p=P(pid);p.meas=p.meas||[];
+  if(id)Object.assign(p.meas.find(x=>x.id===id),r);else p.meas.push(r);
+  saveCache();closeSheet();render()}
+function delMeas(pid,id){ask('Eliminar aquest element?',async()=>{
+  const r=await guard(async()=>{ok(await sb.from('measurements').delete().eq('id',id));return true});
+  if(!r)return;P(pid).meas=P(pid).meas.filter(x=>x.id!==id);saveCache();render()})}
+/* capítols */
+function chapForm(pid,i){const old=i>=0?chaps(P(pid))[i]:'';
+  sheet(`<h3>${i>=0?'Canviar nom del capítol':'Nou capítol'}</h3><label style="margin-top:0">NOM</label><input id="ch_name" value="${esc(old)}" placeholder="Excavació, Formigó, Fonamentació…">
+  <button class="btn" onclick="saveChap('${pid}',${i})">Desar</button><button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`)}
+const newChapter=pid=>chapForm(pid,-1);
+const renameChapter=(pid,i)=>chapForm(pid,i);
+async function saveChap(pid,i){
+  const n=$('#ch_name').value.trim(),p=P(pid),cs=[...chaps(p)];if(!n){toast('Posa un nom al capítol');return}
+  if(cs.some((c,k)=>k!==i&&c.toLowerCase()===n.toLowerCase())){toast('Ja existeix un capítol amb aquest nom');return}
+  const old=i>=0?cs[i]:null;if(i>=0)cs[i]=n;else cs.push(n);
+  busy(true,'Desant…');
+  const r=await guard(async()=>{ok(await sb.from('projects').update({meas_chapters:cs}).eq('id',pid));
+    if(old!==null&&old!==n)ok(await sb.from('measurements').update({chapter:n}).eq('project_id',pid).eq('chapter',old));return true});
+  busy(false);if(!r)return;p.meas_chapters=cs;if(old!==null&&old!==n)(p.meas||[]).forEach(x=>{if(x.chapter===old)x.chapter=n});
+  saveCache();closeSheet();render()}
+function delChapter(pid,i){const p=P(pid),old=chaps(p)[i];ask(`Eliminar el capítol «${old}»? Els seus elements passaran a «Sense capítol».`,async()=>{
+  const cs=chaps(p).filter((c,k)=>k!==i);
+  const r=await guard(async()=>{ok(await sb.from('measurements').update({chapter:''}).eq('project_id',pid).eq('chapter',old));ok(await sb.from('projects').update({meas_chapters:cs}).eq('id',pid));return true});
+  if(!r)return;(p.meas||[]).forEach(x=>{if(x.chapter===old)x.chapter=''});p.meas_chapters=cs;saveCache();render()})}
+
 /* ---------- certificacions ---------- */
 const newCert=pid=>certForm(pid);
 const editCert=(pid,id)=>certForm(pid,P(pid).certs.find(c=>c.id===id));
