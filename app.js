@@ -407,7 +407,7 @@ function measTab(p){
   html+=groups.map(g=>grp(g.n,ms.filter(x=>(x.chapter||'')===g.n),g.i)).join('');
   const loose=ms.filter(x=>!(x.chapter||''));
   if(loose.length)html+=grp(groups.length?'Sense capítol':'Elements',loose,-1);
-  return html+`<button class="btn ghost" onclick="newChapter('${p.id}')">${ic('plus')} Afegir capítol</button><button class="fab" onclick="newMeas('${p.id}')">${ic('plus')} Nova medició</button>`}
+  return html+`<div class="mu" style="text-align:center;font-size:12px;margin:14px 0 0">Mantén premut un capítol o un element per editar-lo o eliminar-lo</div><button class="btn ghost" onclick="newChapter('${p.id}')">${ic('plus')} Afegir capítol</button><button class="fab" onclick="newMeas('${p.id}')">${ic('plus')} Nova medició</button>`}
 function sortMeas(){const c=pref.msort||'recent';sheet(`<h3>Ordenar medicions</h3>${Object.entries(MSORT).map(([k,l])=>`<button class="btn ${c===k?'':'ghost'}" onclick="setMSort('${k}')">${l}</button>`).join('')}<button class="btn ghost" onclick="closeSheet()">Tancar</button>`)}
 function setMSort(k){pref.msort=k;savePref();closeSheet();render()}
 let mUnit='m3';

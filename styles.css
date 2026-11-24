@@ -159,3 +159,6 @@ html,body{overscroll-behavior:none}
 *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
 img,a{-webkit-user-drag:none;user-drag:none}
 html:has(#sheet),html:has(.viewer){overflow:hidden}
+.mhead{padding:14px 6px;min-height:44px;box-sizing:border-box;margin-top:6px!important;border-radius:12px}
+.mhead[data-chap]{background:var(--s1);border:1px solid var(--bd);margin-bottom:8px}
+.mhead[data-chap]:active{background:var(--s2)}
