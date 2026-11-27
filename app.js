@@ -289,7 +289,7 @@ async function removeFiles(paths,{planId,projectId}){
 }
 function delProject(id){ask('Eliminar aquesta obra i tot el seu contingut?',async()=>{
   const p=P(id);
-  const r=await guard(async()=>{await removeFiles(p.plans.map(x=>x.path),{projectId:id});ok(await sb.from('projects').delete().eq('id',id));return true});
+  const r=await guard(async()=>{await removeFiles(p.plans.map(x=>x.path),{projectId:id});const phs=(p.meas||[]).map(x=>x.photo).filter(Boolean);if(phs.length)await sb.storage.from('plans').remove(phs);ok(await sb.from('projects').delete().eq('id',id));return true});
   if(!r)return;for(const x of p.plans){await fdel(x.id);cached.delete(x.id)}
   projects=projects.filter(q=>q.id!==id);saveCache();go({name:'home'})})}
 
@@ -396,9 +396,11 @@ function measTab(p){
   const cmp=srt==='az'?mcmp:srt==='za'?(a,b)=>mcmp(b,a):srt==='big'?(a,b)=>mval(b)-mval(a):(a,b)=>a.created_at<b.created_at?1:-1;
   const extra=[...new Set(ms.map(x=>x.chapter||'').filter(c=>c&&!ch.includes(c)))];
   const groups=[...ch.map((n,i)=>({n,i})),...extra.map(n=>({n,i:-1}))];
-  const row=x=>`<button class="card mrow" data-xid="${x.id}" data-xpid="${p.id}" onclick="editMeas('${p.id}','${x.id}')">
-    <div class="row"><b style="word-break:break-word">${esc(x.name)}</b><span class="mval">${mq(mval(x))} ${MU[x.unit]||''}</span></div>
-    ${mdims(x)?`<div class="mu" style="margin-top:4px">${esc(mdims(x))}</div>`:''}${x.note?`<div class="mu" style="margin-top:4px;opacity:.85">${esc(x.note)}</div>`:''}</button>`;
+  const row=x=>`<button class="card mrow ${x.photo?'hasph':''}" data-xid="${x.id}" data-xpid="${p.id}" onclick="editMeas('${p.id}','${x.id}')">
+    ${x.photo?`<span class="mph" data-ph="${x.id}" onclick="event.stopPropagation();viewPhoto('${x.id}')">${ic('camera')}</span>`:''}
+    <div class="mbody"><div class="row"><b style="word-break:break-word">${esc(x.name)}</b><span class="mval">${mq(mval(x))} ${MU[x.unit]||''}</span></div>
+    ${mdims(x)?`<div class="mu" style="margin-top:4px">${esc(mdims(x))}</div>`:''}${x.note?`<div class="mu" style="margin-top:4px;opacity:.85">${esc(x.note)}</div>`:''}</div></button>`;
+  setTimeout(loadPhotos,0);
   const open=k=>mOpen.has(p.id+'|'+k);
   const grp=(title,list,i,k)=>{const o=open(k);return`<div class="chead ${o?'open':''}" ${i>=0?`data-chap="${i}" data-chpid="${p.id}"`:''} onclick="togM('${p.id}','${k}')"><div class="chmain"><span class="chname">${esc(title)}</span><span class="chmeta">${list.length} ${list.length===1?'element':'elements'}${list.length?' · '+mtxt(msum(list)):''}</span></div><span class="chev">${ic('chev')}</span></div>`
     +(o?(list.length?`<div class="chbody">${[...list].sort(cmp).map(row).join('')}</div>`:`<div class="mu chbody" style="font-size:13px;padding:2px 6px 10px">Cap element en aquest capítol.</div>`):'')};
@@ -427,11 +429,15 @@ function measForm(pid,x){const p=P(pid);x=x||{unit:'m3',qty:1,chapter:''};mUnit=
   <div id="d_d"><label>PROFUND. (m)</label><input id="x_d" type="text" inputmode="decimal" value="${v(x.depth)}" oninput="mPrev()"></div></div>
   <label>UNITATS IGUALS</label><input id="x_q" type="text" inputmode="decimal" value="${v(x.qty==null?1:x.qty)}" oninput="mPrev()">
   <div class="card" id="x_prev" style="margin-top:14px"></div>
+  <label>FOTO</label><div id="x_ph" class="phbox"></div>
+  <input type="file" id="x_file" accept="image/*" hidden onchange="gotPhoto(this)">
+  <button type="button" class="btn ghost" id="x_phbtn" onclick="pickPhoto()" style="margin-top:8px"></button>
+  <button type="button" class="btn ghost" id="x_phdel" onclick="clearPhoto()" style="color:var(--red);display:none">${ic('trash')} Treure la foto</button>
   <label>NOTA (opcional)</label><input id="x_note" value="${esc(x.note||'')}" placeholder="Armat, observacions…">
   <button class="btn" onclick="saveMeas('${pid}','${x.id||''}')">${x.id?'Desar':'Afegir'}</button>
   <button class="btn ghost" onclick="closeSheet()">Cancel·lar</button>`}
-function newMeas(pid){sheet(measForm(pid));setMU(mUnit)}
-function editMeas(pid,id){sheet(measForm(pid,P(pid).meas.find(x=>x.id===id)));setMU(mUnit)}
+function newMeas(pid){mPhReset(null);sheet(measForm(pid));setMU(mUnit);mPhShow()}
+function editMeas(pid,id){const x=P(pid).meas.find(y=>y.id===id);mPhReset(x);sheet(measForm(pid,x));setMU(mUnit);mPhShow()}
 function setMU(u){mUnit=u;document.querySelectorAll('#x_units button').forEach(b=>b.classList.toggle('on',b.dataset.u===u));
   const vis={w:u==='m2'||u==='m3',l:u!=='ut',d:u==='m2'||u==='m3'};
   ['w','l','d'].forEach(k=>{const e=document.getElementById('d_'+k);if(e)e.style.display=vis[k]?'':'none'});
@@ -450,15 +456,67 @@ async function saveMeas(pid,id){
   if(!okd){toast(u==='m3'?'Per a m³ calen ample, llarg i profunditat':u==='m2'?'Per a m² calen ample i llarg':u==='m'?'Escriu la llargada':'Escriu les unitats');return}
   if(!(v.qty>0)){toast('Les unitats han de ser més de 0');return}
   const row={name,chapter:$('#x_ch').value,unit:u,width:v.width||null,length:v.length||null,depth:v.depth||null,qty:v.qty,note:$('#x_note').value.trim()};
-  busy(true,'Desant…');
-  const r=await guard(async()=>id?ok(await sb.from('measurements').update(row).eq('id',id).select().single()):ok(await sb.from('measurements').insert({...row,project_id:pid}).select().single()));
+  busy(true,mPh.blob?'Pujant la foto…':'Desant…');
+  let newPath=null,blob=null;
+  const r=await guard(async()=>{
+    if(mPh.blob){blob=await shrinkImg(mPh.blob);newPath=`${user.id}/${crypto.randomUUID()}.jpg`;
+      ok(await sb.storage.from('plans').upload(newPath,blob,{contentType:'image/jpeg',upsert:false}));row.photo=newPath}
+    else if(mPh.remove)row.photo=null;
+    try{return id?ok(await sb.from('measurements').update(row).eq('id',id).select().single()):ok(await sb.from('measurements').insert({...row,project_id:pid}).select().single())}
+    catch(e){if(newPath)await sb.storage.from('plans').remove([newPath]);throw e}});
   busy(false);if(!r)return;const p=P(pid);p.meas=p.meas||[];
   if(id)Object.assign(p.meas.find(x=>x.id===id),r);else p.meas.push(r);
+  if(newPath||mPh.remove){if(mPh.old)sb.storage.from('plans').remove([mPh.old]).catch(()=>{});phForget(r.id);if(blob)fput('ph_'+r.id,blob).catch(()=>{})}
   const ci=chaps(p).indexOf(row.chapter);mOpen.add(pid+'|'+(row.chapter===''?'l':ci>=0?'c'+ci:'l')); /* obre el capítol on s'ha desat */
   saveCache();closeSheet();render()}
 function delMeas(pid,id){ask('Eliminar aquest element?',async()=>{
+  const x=P(pid).meas.find(y=>y.id===id);
   const r=await guard(async()=>{ok(await sb.from('measurements').delete().eq('id',id));return true});
-  if(!r)return;P(pid).meas=P(pid).meas.filter(x=>x.id!==id);saveCache();render()})}
+  if(!r)return;if(x&&x.photo){sb.storage.from('plans').remove([x.photo]).catch(()=>{});phForget(id)}
+  P(pid).meas=P(pid).meas.filter(y=>y.id!==id);saveCache();render()})}
+/* fotos de les medicions: es comprimeixen, es pugen al magatzem privat i es guarden també al mòbil */
+const phCache=new Map();
+const findMeas=id=>{for(const p of projects){const x=(p.meas||[]).find(q=>q.id===id);if(x)return x}};
+async function shrinkImg(file,max=1600,q=.82){
+  const url=URL.createObjectURL(file);
+  try{const img=new Image();img.src=url;await img.decode();
+    const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(img.naturalWidth*s));c.height=Math.max(1,Math.round(img.naturalHeight*s));
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(!b)throw new Error('No s\'ha pogut processar la foto');return b}
+  finally{URL.revokeObjectURL(url)}}
+async function phURL(id){
+  if(phCache.has(id))return phCache.get(id);
+  let b=await fget('ph_'+id);
+  if(!b){const x=findMeas(id);if(!x||!x.photo)return null;b=ok(await sb.storage.from('plans').download(x.photo));try{await fput('ph_'+id,b)}catch(e){}}
+  const u=URL.createObjectURL(b);phCache.set(id,u);return u}
+function phForget(id){const u=phCache.get(id);if(u)URL.revokeObjectURL(u);phCache.delete(id);fdel('ph_'+id)}
+async function loadPhotos(){
+  for(const el of document.querySelectorAll('[data-ph]')){
+    try{const u=await phURL(el.dataset.ph);if(u&&el.isConnected)el.innerHTML=`<img src="${u}" alt="Foto" draggable="false">`}catch(e){}}}
+async function viewPhoto(id){
+  let u=null;try{u=await phURL(id)}catch(e){}
+  if(!u){toast('La foto no està disponible sense connexió');return}
+  const d=document.createElement('div');d.className='pview';d.id='pview';
+  d.innerHTML=`<img src="${u}" alt="Foto"><button class="pclose" aria-label="Tancar">${ic('x')}</button>`;
+  d.onclick=()=>d.remove();document.body.appendChild(d)}
+IC.x='<path d="M18 6 6 18M6 6l12 12"/>';
+IC.camera='<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.5"/>';
+/* estat de la foto al formulari */
+let mPh={blob:null,remove:false,old:null,url:null};
+function mPhReset(x){if(mPh.url)URL.revokeObjectURL(mPh.url);mPh={blob:null,remove:false,old:x&&x.photo?x.photo:null,url:null,id:x&&x.id}}
+async function mPhShow(){
+  const box=document.getElementById('x_ph');if(!box)return;
+  let u=mPh.url;if(!u&&mPh.old&&!mPh.remove){try{u=await phURL(mPh.id)}catch(e){}}
+  box.innerHTML=u?`<img src="${u}" alt="Foto">`:`<div class="phempty">${ic('camera')}<span>Cap foto</span></div>`;
+  const has=!!u||(mPh.old&&!mPh.remove);
+  const b=document.getElementById('x_phbtn');if(b)b.innerHTML=`${ic('camera')} ${has?'Canviar la foto':'Afegir una foto'}`;
+  const d=document.getElementById('x_phdel');if(d)d.style.display=has?'':'none'}
+function pickPhoto(){document.getElementById('x_file').click()}
+function gotPhoto(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
+  if(!/^image\//.test(f.type||'')){toast('Tria una imatge');return}
+  if(mPh.url)URL.revokeObjectURL(mPh.url);mPh.blob=f;mPh.remove=false;mPh.url=URL.createObjectURL(f);mPhShow()}
+function clearPhoto(){if(mPh.url)URL.revokeObjectURL(mPh.url);mPh.url=null;mPh.blob=null;mPh.remove=true;mPhShow()}
 /* capítols */
 function chapForm(pid,i){const old=i>=0?chaps(P(pid))[i]:'';
   sheet(`<h3>${i>=0?'Canviar nom del capítol':'Nou capítol'}</h3><label style="margin-top:0">NOM</label><input id="ch_name" value="${esc(old)}" placeholder="Excavació, Formigó, Fonamentació…">
